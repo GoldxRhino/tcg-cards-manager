@@ -1,0 +1,4225 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>TCG卡牌管理工具</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+<script>
+  tailwind.config = {
+    theme: {
+      extend: {
+        colors: {
+          primary: '#6366f1',
+          secondary: '#8b5cf6',
+          accent: '#14b8a6',
+          success: '#22c55e',
+          warning: '#f59e0b',
+          error: '#ef4444',
+          info: '#3b82f6',
+          dark: '#0f172a',
+          'dark-light': '#1e293b',
+          'dark-lighter': '#334155',
+          light: '#f8fafc',
+          'light-dark': '#e2e8f0',
+          'light-darker': '#cbd5e1'
+        },
+        fontFamily: {
+          sans: ['Inter', 'system-ui', 'sans-serif'],
+          display: ['Poppins', 'sans-serif']
+        },
+        boxShadow: {
+          'card': '0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05)',
+          'card-hover': '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)',
+          'glass': '0 8px 32px 0 rgba(31, 38, 135, 0.37)',
+          'inner-glow': 'inset 0 2px 4px 0 rgba(255, 255, 255, 0.06)'
+        },
+        backgroundImage: {
+          'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
+          'gradient-conic': 'conic-gradient(from 180deg at 50% 50%, var(--tw-gradient-stops))'
+        }
+      }
+    }
+  }
+</script>
+<style type="text/tailwindcss">
+  @layer utilities {
+    .glass {
+      background: rgba(255, 255, 255, 0.15);
+      backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      box-shadow: var(--tw-shadow-glass);
+    }
+    .dark .glass {
+      background: rgba(30, 41, 59, 0.85);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    
+    .glass-strong {
+      background: rgba(255, 255, 255, 0.25);
+      backdrop-filter: blur(20px);
+      border: 1px solid rgba(255, 255, 255, 0.3);
+    }
+    .dark .glass-strong {
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid rgba(255, 255, 255, 0.15);
+    }
+    
+    .card-shadow {
+      box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 8px 10px -6px rgba(0, 0, 0, 0.1);
+    }
+    
+    .hover-scale {
+      transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+    .hover-scale:hover {
+      transform: translateY(-2px) scale(1.01);
+      box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    }
+    
+    .text-gradient {
+      background-clip: text;
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+    }
+    
+    .bg-blur {
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+    }
+    
+    .animate-float {
+      animation: float 6s ease-in-out infinite;
+    }
+    
+    @keyframes float {
+      0% { transform: translateY(0px); }
+      50% { transform: translateY(-10px); }
+      100% { transform: translateY(0px); }
+    }
+    
+    .animate-bounce-slow {
+      animation: bounce-slow 2s ease-in-out infinite;
+    }
+    
+    @keyframes bounce-slow {
+      0%, 100% { transform: translateY(0); }
+      50% { transform: translateY(-8px); }
+    }
+    
+    .animate-pulse-slow {
+      animation: pulse 3s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+    }
+    
+    .animate-shake {
+      animation: shake 0.5s ease-in-out;
+    }
+    
+    @keyframes shake {
+      0%, 100% { transform: rotate(0deg); }
+      25% { transform: rotate(-15deg); }
+      75% { transform: rotate(15deg); }
+    }
+    
+    .animate-jump {
+      animation: jump 0.6s ease-in-out;
+    }
+    
+    @keyframes jump {
+      0%, 100% { transform: translateY(0) scale(1); }
+      50% { transform: translateY(-20px) scale(1.1); }
+    }
+    
+    .animate-shimmer {
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      background-size: 200% 100%;
+      animation: shimmer 2s infinite;
+    }
+    
+    @keyframes shimmer {
+      0% { background-position: -200% 0; }
+      100% { background-position: 200% 0; }
+    }
+    
+    .card-border {
+      position: relative;
+      border-radius: 0.75rem;
+      overflow: hidden;
+    }
+    
+    .card-border::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      padding: 1px;
+      border-radius: 0.75rem;
+      background: linear-gradient(45deg, var(--tw-gradient-stops));
+      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      -webkit-mask-composite: subtract;
+      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+      mask-composite: exclude;
+      pointer-events: none;
+    }
+    
+    .scrollbar-hidden::-webkit-scrollbar {
+      display: none;
+    }
+    
+    .scrollbar-hidden {
+      -ms-overflow-style: none;
+      scrollbar-width: none;
+    }
+  }
+</style>
+<style>
+  * {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+  }
+  
+  body {
+    font-family: 'Inter', 'Microsoft YaHei', sans-serif;
+    transition: background-color 0.3s ease, color 0.3s ease;
+  }
+  
+  .modal {
+    opacity: 0;
+    visibility: hidden;
+    transition: all 0.3s ease;
+  }
+  
+  .modal.active {
+    opacity: 1;
+    visibility: visible;
+  }
+  
+  .modal-content {
+    transform: translateY(-20px);
+    transition: transform 0.3s ease;
+  }
+  
+  .modal.active .modal-content {
+    transform: translateY(0);
+  }
+  
+  .toast {
+    position: fixed;
+    top: 20px;
+    right: 20px;
+    z-index: 1000;
+    transform: translateX(400px);
+    transition: transform 0.3s ease;
+  }
+  
+  .toast.show {
+    transform: translateX(0);
+  }
+  
+  .table-container {
+    max-height: 60vh;
+    overflow-y: auto;
+  }
+  
+  .table-container::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .table-container::-webkit-scrollbar-track {
+    background: transparent;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb {
+    background: #cbd5e1;
+    border-radius: 3px;
+  }
+  
+  .table-container::-webkit-scrollbar-thumb:hover {
+    background: #94a3b8;
+  }
+  
+  /* 移动端底部导航 */
+  @media (max-width: 1024px) {
+    .mobile-nav {
+      display: flex !important;
+    }
+    .desktop-sidebar {
+      display: none !important;
+    }
+    .main-content {
+      padding-bottom: 80px;
+    }
+  }
+  
+  @media (min-width: 1025px) {
+    .mobile-nav {
+      display: none !important;
+    }
+    .desktop-sidebar {
+      display: block !important;
+    }
+  }
+  
+  .drag-handle {
+    cursor: grab;
+  }
+  
+  .drag-handle:active {
+    cursor: grabbing;
+  }
+  
+  @keyframes fadeIn {
+    from { opacity: 0; transform: translateY(10px); }
+    to { opacity: 1; transform: translateY(0); }
+  }
+  
+  .fade-in {
+    animation: fadeIn 0.3s ease;
+  }
+  
+  .pulse {
+    animation: pulse 2s infinite;
+  }
+  
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.7; }
+  }
+</style>
+</head>
+<body class="bg-light dark:bg-dark text-gray-800 dark:text-gray-200 min-h-screen">
+  <!-- 顶部导航栏 -->
+  <header id="mainHeader" class="bg-gradient-to-r from-primary via-secondary to-accent text-white shadow-xl relative overflow-hidden">
+    <!-- 背景装饰 -->
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_20%_80%,rgba(255,255,255,0.15),transparent_50%)]"></div>
+    <div class="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,rgba(255,255,255,0.1),transparent_50%)]"></div>
+    
+    <div class="container mx-auto px-4 py-3 relative z-10">
+      <div class="flex items-center justify-between gap-4">
+        <!-- 左侧：Logo和标题 -->
+        <div class="flex items-center gap-3">
+          <div class="w-10 h-10 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center border border-white/30 shadow-lg animate-float">
+            <i class="fa fa-gamepad text-xl"></i>
+          </div>
+          <div>
+            <h1 class="text-xl md:text-2xl font-bold font-display tracking-tight">
+              <span class="text-gradient bg-gradient-to-r from-white to-blue-100">TCG卡牌管理</span>
+            </h1>
+            <p class="text-xs text-white/70 flex items-center gap-1.5">
+              <span>犀牛的TCG笔记</span>
+              <img src="avatar.jpg" alt="头像" class="w-5 h-5 rounded-full border border-white/30 object-cover">
+            </p>
+          </div>
+        </div>
+        
+        <!-- 右侧：搜索和设置 -->
+        <div class="flex items-center gap-2">
+          <div class="relative" data-tooltip="输入卡牌名称或编号进行搜索，支持实时筛选显示结果。">
+            <input type="text" id="search" oninput="performSearch()" placeholder="搜索..." class="bg-white/20 backdrop-blur-sm border border-white/30 rounded-lg pl-8 pr-7 py-1.5 text-sm w-36 md:w-48 focus:ring-2 focus:ring-white/50 focus:border-white focus:outline-none placeholder-white/50">
+            <i class="fa fa-search absolute left-2.5 top-1/2 transform -translate-y-1/2 text-white/60 text-xs"></i>
+            <button id="clearSearch" onclick="clearSearch()" class="hidden absolute right-2 top-1/2 transform -translate-y-1/2 text-white/60 hover:text-white transition-colors" data-tooltip="清空搜索框内容，显示所有卡牌。">
+              <i class="fa fa-times-circle text-xs"></i>
+            </button>
+          </div>
+          
+          <!-- 背景切换按钮 -->
+          <button onclick="changeBackground()" 
+                  class="w-8 h-8 bg-gradient-to-br from-purple-500 to-pink-500 rounded-lg flex items-center justify-center hover:scale-110 transition-transform"
+                  title="切换网页背景">
+            <i class="fa fa-image text-white text-sm"></i>
+          </button>
+          
+          <!-- 使用说明按钮 -->
+          <button onclick="showHelp()" 
+                  class="w-8 h-8 bg-white/20 backdrop-blur-sm rounded-lg flex items-center justify-center hover:bg-white/30 transition-colors"
+                  title="使用说明">
+            <i class="fa fa-question-circle text-white text-sm"></i>
+          </button>
+          
+          <button onclick="showBgColorPicker()" class="bg-white/20 backdrop-blur-sm p-1.5 rounded-lg hover:bg-white/30 transition-colors" data-tooltip="自定义首页背景颜色主题。提供多种渐变配色方案可供选择。">
+            <i class="fa fa-paint-brush text-white text-sm"></i>
+          </button>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- 统计卡片 -->
+  <div class="main-content container mx-auto px-4 py-2">
+    <div class="grid grid-cols-3 gap-2 mb-3">
+      <!-- 总卡牌数 -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border border-gray-100 dark:border-gray-700" data-tooltip="显示当前收藏中所有卡牌的总数量（按实际张数计算，包含重复卡牌）。">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">总卡牌数</p>
+            <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-0.5" id="totalCount">0</h3>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-blue-400 to-blue-600 flex items-center justify-center shadow-lg shadow-blue-500/30">
+            <i class="fa fa-clone text-white text-sm"></i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 总价值 -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border border-gray-100 dark:border-gray-700" data-tooltip="所有卡牌按当前选中货币计算的总价值。自动根据汇率换算。">
+        <div class="flex items-center justify-between">
+          <div>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">总价值</p>
+            <h3 class="text-2xl font-bold text-gray-800 dark:text-gray-100 mt-0.5">
+              <span id="totalPrice">0</span> <span id="curLabel" class="text-sm text-gray-400">CNY</span>
+            </h3>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-emerald-600 flex items-center justify-center shadow-lg shadow-emerald-500/30">
+            <i class="fa fa-money text-white text-sm"></i>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 汇率信息 -->
+      <div class="bg-white dark:bg-gray-800 rounded-xl p-3 shadow-sm hover:shadow-md transition-all duration-300 hover:-translate-y-0.5 border border-gray-100 dark:border-gray-700" data-tooltip="选择不同的货币查看对应汇率。所有价格会自动按当前汇率换算显示。">
+        <div class="flex items-center justify-between">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-1.5 mb-0.5">
+              <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-medium">当前汇率</p>
+              <select id="currencySel" onchange="changeCurrency()" class="text-[10px] bg-gray-100 dark:bg-gray-700 border-0 rounded px-1.5 py-0.5 cursor-pointer focus:ring-1 focus:ring-orange-400 text-gray-700 dark:text-gray-300 font-medium">
+                <option value="CNY">CNY</option>
+                <option value="USD">USD</option>
+                <option value="JPY">JPY</option>
+                <option value="KRW">KRW</option>
+                <option value="SGD">SGD</option>
+                <option value="MYR">MYR</option>
+                <option value="THB">THB</option>
+              </select>
+            </div>
+            <h3 class="text-sm font-bold text-gray-800 dark:text-gray-100 truncate" id="exchangeRate">1 CNY = 1 CNY</h3>
+            <p class="text-[10px] text-gray-400 truncate" id="rateUpdateTime">基准货币：人民币</p>
+          </div>
+          <div class="w-10 h-10 rounded-xl bg-gradient-to-br from-orange-400 to-orange-600 flex items-center justify-center shadow-lg shadow-orange-500/30 flex-shrink-0">
+            <i class="fa fa-exchange text-white text-sm"></i>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 主要内容区域 -->
+  <div class="container mx-auto px-4">
+    <div class="flex flex-col lg:flex-row gap-4">
+      <!-- 左侧功能按钮栏 -->
+      <div class="desktop-sidebar lg:w-[160px] flex-shrink-0">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm p-2.5 border border-gray-100 dark:border-gray-700 sticky top-3">
+          <!-- 核心操作 -->
+          <div class="mb-2">
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">核心操作</p>
+            <button id="addBtn" onclick="openAddCardModal()" data-tooltip="添加新的卡牌到收藏库中。点击后填写卡牌信息（名称、编号、类型、价格等）并保存。" class="w-full bg-gradient-to-r from-primary to-secondary hover:opacity-90 text-white px-2 py-1.5 rounded-lg text-xs transition-all duration-200 flex items-center gap-1.5 mb-1 shadow-sm shadow-primary/30">
+              <i class="fa fa-plus text-[10px]"></i> 新增卡牌
+            </button>
+          </div>
+          
+          <!-- 数据管理 -->
+          <div class="mb-2">
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">数据管理</p>
+            <div class="grid grid-cols-2 gap-1">
+              <button id="exportBtn" onclick="exportToExcel()" data-tooltip="将所有卡牌数据导出为Excel文件，方便备份或在其他设备上使用。" class="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-download text-xs"></i> 导出
+              </button>
+              <button id="importBtn" onclick="importFromExcel()" data-tooltip="从Excel文件导入卡牌数据。选择之前导出的文件即可恢复数据。" class="bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-upload text-xs"></i> 导入
+              </button>
+            </div>
+          </div>
+          
+          <!-- 分组管理 -->
+          <div class="mb-2">
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">分组管理</p>
+            <div class="grid grid-cols-2 gap-1">
+              <button id="mergeGroupBtn" onclick="showMergeGroupManager()" data-tooltip="合并子集功能。可以将选中的卡牌归集到一个自定义分组中，方便管理和查看。" class="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-object-group text-xs"></i> 合并
+              </button>
+              <button id="groupManagerBtn" onclick="showGroupManager()" data-tooltip="查看和管理所有分组。可以查看分组内的卡牌、删除分组等。" class="bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-folder-open text-xs"></i> 分组
+              </button>
+            </div>
+          </div>
+          
+          <!-- 工具 -->
+          <div class="mb-2">
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">工具</p>
+            <div class="grid grid-cols-2 gap-1">
+              <button id="statsBtn" onclick="showStats()" data-tooltip="查看卡牌收藏的统计信息，包括各类别分布、价值分析等图表。" class="bg-emerald-50 dark:bg-emerald-900/30 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-emerald-600 dark:text-emerald-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-bar-chart text-xs"></i> 统计
+              </button>
+              <button id="historyBtn" onclick="showHistory()" data-tooltip="查看所有操作历史记录，包括添加、编辑、删除等操作的详细日志。" class="bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-history text-xs"></i> 历史
+              </button>
+            </div>
+          </div>
+          
+          <!-- 删除管理 -->
+          <div>
+            <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">删除管理</p>
+            <div class="grid grid-cols-2 gap-1">
+              <button id="batchDeleteBtn" onclick="batchDeleteOrClear()" data-tooltip="批量删除卡牌或清空所有数据。勾选卡牌后点击可批量删除，未勾选时点击可清空全部。" class="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-trash text-xs"></i> 删除
+              </button>
+              <button id="deletedCardsBtn" onclick="showDeletedCardsManager()" data-tooltip="点击进入已删除卡牌管理界面，在里面可以操作所有被删除的卡牌，包括查看详情、恢复卡牌或彻底删除。" class="bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 text-orange-600 dark:text-orange-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-trash-o text-xs"></i> 已删
+              </button>
+            </div>
+          </div>
+          
+          <!-- 互动宠物 - 海贼王金句 -->
+          <div class="mt-4 flex justify-center items-center gap-3">
+            <div id="onePiecePet" class="relative cursor-pointer group" onmouseenter="petInteract()" onclick="petClick()">
+              <!-- 宠物形象 -->
+              <div class="w-20 h-20 relative animate-bounce-slow transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1">
+                <img src="ScreenShot_2026-05-25_092024_557.png" 
+                     alt="宠物" 
+                     class="w-full h-full object-contain drop-shadow-lg">
+              </div>
+              
+              <!-- 金句气泡 -->
+              <div id="quoteBubble" class="absolute -top-2 left-full ml-2 w-40 bg-white dark:bg-gray-700 rounded-lg p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                <div class="text-[10px] text-gray-700 dark:text-gray-300 leading-tight" id="quoteText">
+                  我是要成为海贼王的男人！
+                </div>
+                <div class="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-white dark:bg-gray-700 rotate-45"></div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 中间卡牌列表 -->
+      <div class="card-list-area flex-1 min-w-0">
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
+          <!-- 表头工具栏 -->
+          <div class="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
+            <h2 class="text-base font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-200">
+              <i class="fa fa-list text-primary text-sm"></i> 卡牌收藏
+              <span class="text-xs text-gray-400 dark:text-gray-500 font-normal" id="cardListCount">(0)</span>
+            </h2>
+            <div class="flex gap-2">
+              <select id="sortSel" onchange="sortCards()" class="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-700 cursor-pointer focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
+                <option value="name">按名称</option>
+                <option value="series">按系列</option>
+                <option value="source">按来源</option>
+                <option value="price-desc">价格 ↓</option>
+                <option value="price-asc">价格 ↑</option>
+                <option value="qty-desc">数量 ↓</option>
+              </select>
+              <button id="batchEditBtn" onclick="batchEdit()" class="text-xs bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 px-2.5 py-1 rounded-lg flex items-center gap-1 transition-colors">
+                <i class="fa fa-pencil text-[10px]"></i> 批量
+              </button>
+            </div>
+          </div>
+          
+          <!-- 表格区域 -->
+          <div class="overflow-x-auto">
+            <table class="w-full min-w-[600px] text-xs">
+              <thead class="bg-gray-50 dark:bg-gray-700 sticky top-0 z-10">
+                <tr>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8">
+                    <input type="checkbox" id="selectAll" onchange="toggleSelectAll()" class="rounded text-primary focus:ring-primary cursor-pointer w-3.5 h-3.5">
+                  </th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">系列</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">编号</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">类型</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">分组</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">语言</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">来源</th>
+                  <th class="px-2 py-2 text-center font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-8">标</th>
+                  <th class="px-2 py-2 text-right font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">数量</th>
+                  <th class="px-2 py-2 text-right font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">购入价</th>
+                  <th class="px-2 py-2 text-right font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">市场价</th>
+                  <th class="px-2 py-2 text-right font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">出售价</th>
+                  <th class="px-2 py-2 text-center font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">操作</th>
+                </tr>
+              </thead>
+              <tbody id="cardBody" class="divide-y divide-gray-100 dark:divide-gray-700/50">
+                <!-- 卡牌数据将在这里动态生成 -->
+              </tbody>
+            </table>
+            <div id="emptyState" class="hidden text-center py-10">
+              <div class="text-gray-200 dark:text-gray-700 mb-3">
+                <i class="fa fa-inbox text-5xl"></i>
+              </div>
+              <h3 class="text-base font-medium text-gray-700 dark:text-gray-300 mb-1">暂无卡牌数据</h3>
+              <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">点击左侧"新增"按钮开始添加</p>
+              <button onclick="loadSampleData()" class="bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors text-xs">
+                <i class="fa fa-magic mr-1"></i>加载示例
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+    </div>
+  </div>
+  
+  <!-- 移动端底部导航 -->
+  <nav class="mobile-nav fixed bottom-0 left-0 right-0 bg-white dark:bg-gray-800 border-t border-gray-200 dark:border-gray-700 z-40 hidden">
+    <div class="flex justify-around items-center py-2">
+      <button onclick="openAddCardModal()" class="flex flex-col items-center gap-0.5 p-2 text-primary">
+        <i class="fa fa-plus text-lg"></i>
+        <span class="text-[10px]">新增</span>
+      </button>
+      <button onclick="showStats()" class="flex flex-col items-center gap-0.5 p-2 text-gray-500 dark:text-gray-400">
+        <i class="fa fa-bar-chart text-lg"></i>
+        <span class="text-[10px]">统计</span>
+      </button>
+      <button onclick="showGroupManager()" class="flex flex-col items-center gap-0.5 p-2 text-gray-500 dark:text-gray-400">
+        <i class="fa fa-folder-open text-lg"></i>
+        <span class="text-[10px]">分组</span>
+      </button>
+      <button onclick="showHistory()" class="flex flex-col items-center gap-0.5 p-2 text-gray-500 dark:text-gray-400">
+        <i class="fa fa-history text-lg"></i>
+        <span class="text-[10px]">历史</span>
+      </button>
+      <button onclick="showMoreMenu()" class="flex flex-col items-center gap-0.5 p-2 text-gray-500 dark:text-gray-400">
+        <i class="fa fa-ellipsis-h text-lg"></i>
+        <span class="text-[10px]">更多</span>
+      </button>
+    </div>
+  </nav>
+
+  <!-- 模态框 -->
+  <div id="modal" class="modal fixed inset-0 bg-black/50 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+    <div class="modal-content bg-white dark:bg-gray-800 rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-y-auto">
+      <div id="modalContent">
+        <!-- 模态框内容将动态生成 -->
+      </div>
+    </div>
+  </div>
+
+  <!-- 文件输入 -->
+  <input type="file" id="fileInput" class="hidden">
+  <input type="file" id="backupInput" class="hidden">
+
+  <!-- Toast 通知 -->
+  <div id="toast" class="toast">
+    <div class="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 border-l-4 border-primary max-w-sm">
+      <div class="flex items-start gap-3">
+        <div id="toastIcon" class="text-primary">
+          <i class="fa fa-check-circle text-xl"></i>
+        </div>
+        <div class="flex-1">
+          <h4 id="toastTitle" class="font-semibold text-gray-900 dark:text-white">成功</h4>
+          <p id="toastMessage" class="text-sm text-gray-500 dark:text-gray-400">操作已完成</p>
+        </div>
+        <button id="closeToast" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-200">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- 隐藏的文件输入框 -->
+  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleExcelFile(event)" class="hidden">
+  <input type="file" id="backupInput" accept=".json" onchange="handleBackupFile(event)" class="hidden">
+
+<script>
+// === 全局变量 ===
+let cards = JSON.parse(localStorage.getItem('tcgCards')) || [];
+let currency = localStorage.getItem('tcgCurrency') || 'CNY';
+// 汇率（以CNY为基准1）
+const rate = { 
+  CNY: 1, 
+  USD: 0.138, 
+  JPY: 21.5, 
+  KRW: 188.5, 
+  SGD: 0.186, 
+  MYR: 0.65, 
+  THB: 4.85 
+};
+const currencySymbols = {
+  CNY: '¥',
+  USD: '$',
+  JPY: '¥',
+  KRW: '₩',
+  SGD: 'S$',
+  MYR: 'RM',
+  THB: '฿'
+};
+
+// 获取指定货币的汇率（相对于CNY）
+function getRate(currencyCode) {
+  if (!currencyCode || currencyCode === 'CNY') return 1;
+  return rate[currencyCode] || 1;
+}
+
+// 更新已删除卡牌数量显示
+function updateDeletedCount() {
+  const deletedCount = cards.filter(card => card.markedForDelete).length;
+  const deletedCountEl = document.getElementById('deletedCount');
+  if (deletedCountEl) {
+    deletedCountEl.textContent = deletedCount;
+  }
+}
+
+let selectedCards = new Set();
+let operationHistory = JSON.parse(localStorage.getItem('tcgHistory')) || [];
+let historyIndex = -1;
+let currentCard = null;
+
+// === DOM 元素 ===
+let elements = {};
+
+// === 初始化函数 ===
+function initApp() {
+  elements = {
+    body: document.getElementById('cardBody'),
+    curLabel: document.getElementById('curLabel'),
+    totalCount: document.getElementById('totalCount'),
+    totalPrice: document.getElementById('totalPrice'),
+    cardListCount: document.getElementById('cardListCount'),
+    currencySel: document.getElementById('currencySel'),
+    search: document.getElementById('search'),
+    selectAll: document.getElementById('selectAll'),
+    modal: document.getElementById('modal'),
+    modalContent: document.getElementById('modalContent'),
+    toast: document.getElementById('toast'),
+    toastIcon: document.getElementById('toastIcon'),
+    toastTitle: document.getElementById('toastTitle'),
+    toastMessage: document.getElementById('toastMessage'),
+    closeToast: document.getElementById('closeToast'),
+    themeToggle: document.getElementById('themeToggle')
+  };
+  
+  // 恢复用户选择的币种
+  if (elements.currencySel) {
+    elements.currencySel.value = currency;
+  }
+  
+  // 绑定Toast关闭事件
+  if (elements.closeToast) {
+    elements.closeToast.onclick = function() {
+      elements.toast.classList.remove('show');
+    };
+  }
+  
+  // 加载主题
+  if (localStorage.getItem('theme') === 'dark' || (!localStorage.getItem('theme') && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
+    document.documentElement.classList.add('dark');
+    if (elements.themeToggle) {
+      elements.themeToggle.innerHTML = '<i class="fa fa-sun-o text-yellow-500"></i>';
+    }
+  }
+  
+  // 初始化背景颜色
+  const savedBgColor = localStorage.getItem('bgColor');
+  if (savedBgColor) {
+    const header = document.getElementById('mainHeader');
+    if (header) {
+      header.className = `bg-gradient-to-r ${savedBgColor} text-white shadow-xl relative overflow-hidden`;
+    }
+  }
+  
+  // 初始渲染
+  render();
+  
+  // 确保已删除数量正确显示
+  updateDeletedCount();
+}
+
+// === 获取分类历史记录 ===
+function getCategoryHistory() {
+  return JSON.parse(localStorage.getItem('tcgCategoryHistory')) || [];
+}
+
+// === 保存分类历史记录 ===
+function saveCategoryHistory(category) {
+  if (!category) return;
+  let history = getCategoryHistory();
+  // 去重并添加到开头
+  history = history.filter(c => c !== category);
+  history.unshift(category);
+  // 只保留最近20个
+  history = history.slice(0, 20);
+  localStorage.setItem('tcgCategoryHistory', JSON.stringify(history));
+}
+
+// === 生成分类选项HTML ===
+function generateCategoryOptions(selectedValue) {
+  const defaultCategories = ['宝可梦', 'OPCG', '游戏王', '黑白双翼'];
+  const history = getCategoryHistory();
+  // 过滤掉默认分类中已存在的
+  const filteredHistory = history.filter(h => !defaultCategories.includes(h));
+  const allCategories = [...defaultCategories, ...filteredHistory];
+  
+  const isCustom = selectedValue && !defaultCategories.includes(selectedValue);
+  
+  let options = allCategories.map(cat => 
+    `<option value="${cat}" ${selectedValue === cat ? 'selected' : ''}>${cat}</option>`
+  ).join('');
+  
+  options += `<option value="other" ${isCustom ? 'selected' : ''}>其他（自定义）</option>`;
+  
+  return options;
+}
+
+// === 处理分类变更 ===
+function handleCategoryChange(select) {
+  const customInput = document.getElementById('cardCategoryCustom');
+  if (select.value === 'other') {
+    customInput.classList.remove('hidden');
+    customInput.focus();
+  } else {
+    customInput.classList.add('hidden');
+    customInput.value = '';
+  }
+}
+
+// === 获取来源历史记录 ===
+function getSourceHistory() {
+  return JSON.parse(localStorage.getItem('tcgSourceHistory')) || [];
+}
+
+// === 保存来源历史记录 ===
+function saveSourceHistory(source) {
+  if (!source) return;
+  let history = getSourceHistory();
+  // 去重并添加到开头
+  history = history.filter(s => s !== source);
+  history.unshift(source);
+  // 只保留最近20个
+  history = history.slice(0, 20);
+  localStorage.setItem('tcgSourceHistory', JSON.stringify(history));
+}
+
+// === 加载来源历史记录到datalist ===
+function loadSourceHistory() {
+  const history = getSourceHistory();
+  const datalist = document.getElementById('sourceHistory');
+  if (datalist) {
+    datalist.innerHTML = history.map(source => 
+      `<option value="${source}">`
+    ).join('');
+  }
+}
+
+// === 获取系列历史记录 ===
+function getSeriesHistory() {
+  return JSON.parse(localStorage.getItem('tcgSeriesHistory')) || [];
+}
+
+// === 保存系列历史记录 ===
+function saveSeriesHistory(series) {
+  if (!series) return;
+  let history = getSeriesHistory();
+  // 去重并添加到开头
+  history = history.filter(s => s !== series);
+  history.unshift(series);
+  // 只保留最近30个
+  history = history.slice(0, 30);
+  localStorage.setItem('tcgSeriesHistory', JSON.stringify(history));
+}
+
+// === 加载系列历史记录到datalist ===
+function loadSeriesHistory() {
+  const history = getSeriesHistory();
+  const datalist = document.getElementById('seriesHistory');
+  if (datalist) {
+    datalist.innerHTML = history.map(series => 
+      `<option value="${series}">`
+    ).join('');
+  }
+}
+
+// === 显示系列下拉列表 ===
+function showSeriesDropdown() {
+  const dropdown = document.getElementById('seriesDropdown');
+  const history = getSeriesHistory();
+  renderSeriesDropdown(history);
+  dropdown.classList.remove('hidden');
+}
+
+// === 渲染系列下拉列表 ===
+function renderSeriesDropdown(items) {
+  const dropdown = document.getElementById('seriesDropdown');
+  if (items.length === 0) {
+    dropdown.innerHTML = '<div class="px-3 py-2 text-gray-400 text-sm">暂无记录</div>';
+    return;
+  }
+  dropdown.innerHTML = items.map((item, idx) => `
+    <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0" onclick="selectSeries('${item.replace(/'/g, "\\'")}')">
+      <span class="text-sm">${item}</span>
+      <button onclick="event.stopPropagation(); deleteSeriesItem(${idx})" class="text-gray-400 hover:text-red-500 p-1">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// === 筛选系列下拉列表 ===
+function filterSeriesDropdown(value) {
+  const history = getSeriesHistory();
+  const filtered = history.filter(item => item.toLowerCase().includes(value.toLowerCase()));
+  renderSeriesDropdown(filtered);
+  document.getElementById('seriesDropdown').classList.remove('hidden');
+}
+
+// === 选择系列 ===
+function selectSeries(value) {
+  document.getElementById('cardSeries').value = value;
+  document.getElementById('seriesDropdown').classList.add('hidden');
+}
+
+// === 删除系列历史记录项 ===
+function deleteSeriesItem(index) {
+  let history = getSeriesHistory();
+  history.splice(index, 1);
+  localStorage.setItem('tcgSeriesHistory', JSON.stringify(history));
+  // 刷新下拉列表
+  const currentValue = document.getElementById('cardSeries').value;
+  filterSeriesDropdown(currentValue);
+  showToast('成功', '已删除该记录');
+}
+
+// === 显示来源下拉列表 ===
+function showSourceDropdown() {
+  const dropdown = document.getElementById('sourceDropdown');
+  const history = getSourceHistory();
+  renderSourceDropdown(history);
+  dropdown.classList.remove('hidden');
+}
+
+// === 渲染来源下拉列表 ===
+function renderSourceDropdown(items) {
+  const dropdown = document.getElementById('sourceDropdown');
+  if (items.length === 0) {
+    dropdown.innerHTML = '<div class="px-3 py-2 text-gray-400 text-sm">暂无记录</div>';
+    return;
+  }
+  dropdown.innerHTML = items.map((item, idx) => `
+    <div class="flex items-center justify-between px-3 py-2 hover:bg-gray-100 dark:hover:bg-gray-700 cursor-pointer border-b border-gray-100 dark:border-gray-700 last:border-0" onclick="selectSource('${item.replace(/'/g, "\\'")}')">
+      <span class="text-sm">${item}</span>
+      <button onclick="event.stopPropagation(); deleteSourceItem(${idx})" class="text-gray-400 hover:text-red-500 p-1">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// === 筛选来源下拉列表 ===
+function filterSourceDropdown(value) {
+  const history = getSourceHistory();
+  const filtered = history.filter(item => item.toLowerCase().includes(value.toLowerCase()));
+  renderSourceDropdown(filtered);
+  document.getElementById('sourceDropdown').classList.remove('hidden');
+}
+
+// === 选择来源 ===
+function selectSource(value) {
+  document.getElementById('cardSource').value = value;
+  document.getElementById('sourceDropdown').classList.add('hidden');
+}
+
+// === 删除来源历史记录项 ===
+function deleteSourceItem(index) {
+  let history = getSourceHistory();
+  history.splice(index, 1);
+  localStorage.setItem('tcgSourceHistory', JSON.stringify(history));
+  // 刷新下拉列表
+  const currentValue = document.getElementById('cardSource').value;
+  filterSourceDropdown(currentValue);
+  showToast('成功', '已删除该记录');
+}
+
+// === 点击外部关闭下拉列表 ===
+document.addEventListener('click', function(e) {
+  const seriesInput = document.getElementById('cardSeries');
+  const seriesDropdown = document.getElementById('seriesDropdown');
+  const sourceInput = document.getElementById('cardSource');
+  const sourceDropdown = document.getElementById('sourceDropdown');
+  
+  if (seriesDropdown && !seriesInput?.contains(e.target) && !seriesDropdown.contains(e.target)) {
+    seriesDropdown.classList.add('hidden');
+  }
+  if (sourceDropdown && !sourceInput?.contains(e.target) && !sourceDropdown.contains(e.target)) {
+    sourceDropdown.classList.add('hidden');
+  }
+});
+
+// === 打开新增卡牌模态框 ===
+function openAddCardModal() {
+  currentCard = null;
+  editingCardIndex = null; // 新增模式，无编辑索引
+  editingCardData = null; // 清除之前保存的数据
+  
+  const content = `
+    <form id="cardForm" class="space-y-3">
+      <!-- 卡牌名称 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">
+          卡牌名称 <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="cardName" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
+      </div>
+      
+      <!-- 分类 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">分类</label>
+          <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
+            ${generateCategoryOptions()}
+          </select>
+          <input type="text" id="cardCategoryCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义分类">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">类型</label>
+          <select id="cardType" onchange="handleTypeChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
+            <option value="裸卡">裸卡</option>
+            <option value="评级卡">评级卡</option>
+            <option value="卡册">卡册</option>
+            <option value="卡包">卡包</option>
+            <option value="other">其他</option>
+          </select>
+          <input type="text" id="cardTypeCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义类型">
+        </div>
+      </div>
+      
+      <!-- 系列和编号 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <label class="block text-sm font-medium mb-1">系列</label>
+          <input type="text" id="cardSeries" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：LOB" onfocus="showSeriesDropdown()" oninput="filterSeriesDropdown(this.value)">
+          <div id="seriesDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">编号</label>
+          <input type="text" id="cardNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：001">
+        </div>
+      </div>
+      
+      <!-- 语言、库存、卡类型 -->
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">语言</label>
+          <select id="cardLanguage" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="中文">中文</option>
+            <option value="日文">日文</option>
+            <option value="英文">英文</option>
+            <option value="韩文">韩文</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">库存 <span class="text-xs text-gray-400">(自动)</span></label>
+          <input type="number" id="cardQty" value="0" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">卡类型</label>
+          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="裸卡">裸卡</option>
+            <option value="评级卡">评级卡</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- 来源信息（左：购入相关，右：出售相关） -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入信息</div>
+          <div class="relative">
+            <label class="block text-sm font-medium mb-1">来源</label>
+            <input type="text" id="cardSource" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：淘宝" onfocus="showSourceDropdown()" oninput="filterSourceDropdown(this.value)">
+            <div id="sourceDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">来源链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSourceLink" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardPurchaseTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF123456789">
+          </div>
+        </div>
+        <!-- 右列：出售 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售信息</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售</label>
+            <input type="text" id="cardSaleSource" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：闲鱼">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSaleLink" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardSaleTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF987654321">
+          </div>
+        </div>
+      </div>
+      
+      <!-- 价格信息（左：购入价格，右：出售价格） -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入价格 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入价格</div>
+          <!-- 购入数量 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入数量</label>
+            <input type="number" id="cardPurchaseQty" value="0" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <!-- 购入价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardPurchasePrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
+              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY">CNY</option>
+                <option value="USD">USD</option>
+                <option value="JPY">JPY</option>
+                <option value="KRW">KRW</option>
+                <option value="SGD">SGD</option>
+                <option value="MYR">MYR</option>
+                <option value="THB">THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 市场价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">市场价 <span class="text-xs text-gray-400">(参考)</span></label>
+            <div class="flex gap-1">
+              <input type="number" id="cardMarketPrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('market')">
+              <select id="cardMarketCurrency" onchange="updatePricePreview('market')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY">CNY</option>
+                <option value="USD">USD</option>
+                <option value="JPY">JPY</option>
+                <option value="KRW">KRW</option>
+                <option value="SGD">SGD</option>
+                <option value="MYR">MYR</option>
+                <option value="THB">THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 查价按钮 -->
+          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2" title="查价">
+            <i class="fa fa-search"></i> 查价
+          </button>
+        </div>
+        
+        <!-- 右列：出售价格 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售价格</div>
+          <!-- 出售数量 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售数量</label>
+            <input type="number" id="cardSaleQty" value="0" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <!-- 出售价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardSalePrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
+              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY">CNY</option>
+                <option value="USD">USD</option>
+                <option value="JPY">JPY</option>
+                <option value="KRW">KRW</option>
+                <option value="SGD">SGD</option>
+                <option value="MYR">MYR</option>
+                <option value="THB">THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 利润 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">利润 <span class="text-xs text-gray-400">(自动)</span></label>
+            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
+              自动计算
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 图片上传 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">卡牌照片</label>
+        <div class="flex items-start gap-3">
+          <div id="imagePreview" class="w-24 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800 overflow-hidden">
+            <i class="fa fa-image text-gray-400 text-2xl"></i>
+          </div>
+          <div class="flex-1 flex flex-col gap-2">
+            <input type="file" id="cardImage" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+            <button type="button" onclick="document.getElementById('cardImage').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-upload mr-1"></i>选择图片
+            </button>
+            <button type="button" onclick="clearImage()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-trash mr-1"></i>清除
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 按钮 -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90 transition-colors">
+          <i class="fa fa-plus mr-1"></i>添加
+        </button>
+        <button type="button" onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          <i class="fa fa-times mr-1"></i>取消
+        </button>
+      </div>
+    </form>
+  `;
+  
+  showModal(content, '新增卡牌');
+  
+  document.getElementById('cardForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const name = document.getElementById('cardName').value.trim();
+    if (!name) {
+      showToast('错误', '请输入卡牌名称', 'error');
+      document.getElementById('cardName').focus();
+      return;
+    }
+    
+    const typeSelect = document.getElementById('cardType');
+    const typeValue = typeSelect.value === 'other' 
+      ? document.getElementById('cardTypeCustom').value.trim() 
+      : typeSelect.value;
+    
+    const categorySelect = document.getElementById('cardCategory');
+    const categoryValue = categorySelect.value === 'other' 
+      ? document.getElementById('cardCategoryCustom').value.trim() 
+      : categorySelect.value;
+    
+    // 保存分类历史记录
+    if (categoryValue && categoryValue !== '其他') {
+      saveCategoryHistory(categoryValue);
+    }
+    
+    // 保存来源历史记录
+    const sourceValue = document.getElementById('cardSource').value.trim();
+    if (sourceValue) {
+      saveSourceHistory(sourceValue);
+    }
+    
+    // 保存系列历史记录
+    const seriesValue = document.getElementById('cardSeries').value.trim();
+    if (seriesValue) {
+      saveSeriesHistory(seriesValue);
+    }
+    
+    // 获取价格信息
+    const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
+    const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
+    const marketPrice = parseFloat(document.getElementById('cardMarketPrice').value) || 0;
+    const marketCurrency = document.getElementById('cardMarketCurrency').value;
+    const salePrice = parseFloat(document.getElementById('cardSalePrice').value) || 0;
+    const saleCurrency = document.getElementById('cardSaleCurrency').value;
+    
+    cards.push({
+      name: name,
+      category: categoryValue || '其他',
+      series: seriesValue,
+      no: document.getElementById('cardNo').value.trim(),
+      cardType: typeValue || '其他',
+      language: document.getElementById('cardLanguage').value,
+      source: sourceValue,
+      sourceLink: document.getElementById('cardSourceLink').value.trim(),
+      saleSource: document.getElementById('cardSaleSource').value.trim(),
+      saleLink: document.getElementById('cardSaleLink').value.trim(),
+      purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
+      saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
+      markedForDelete: false,
+      image: currentImageBase64,
+      qty: parseInt(document.getElementById('cardQty').value) || 1,
+      purchasePrice: purchasePrice,
+      purchaseCurrency: purchaseCurrency,
+      marketPrice: marketPrice,
+      marketCurrency: marketCurrency,
+      salePrice: salePrice,
+      saleCurrency: saleCurrency
+    });
+    save();
+    render();
+    closeModal();
+    currentImageBase64 = null;
+    showToast('成功', '卡牌已添加');
+  };
+}
+
+// === 批量删除（首页删除按钮）===
+function batchDeleteOrClear() {
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  
+  if (checkboxes.length === 0) {
+    // 没有选中任何卡牌，提示用户先选择
+    showToast('提示', '请先勾选要删除的卡牌', 'warning');
+  } else {
+    // 有选中的卡牌，执行批量标记删除
+    const indices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+    
+    // 过滤出未标记的卡牌（只处理未标记的）
+    const unmarkedIndices = indices.filter(i => cards[i] && !cards[i].markedForDelete);
+    
+    if (unmarkedIndices.length === 0) {
+      showToast('提示', '选中的卡牌已在"已删"列表中', 'warning');
+      return;
+    }
+    
+    if (confirm(`确定要删除选中的 ${unmarkedIndices.length} 张卡牌吗？删除后可在"已删"中查看和恢复。`)) {
+      unmarkedIndices.forEach(index => {
+        cards[index].markedForDelete = true;
+      });
+      
+      save();
+      render();
+      updateDeletedCount();
+      
+      // 清空选择
+      selectedCards.clear();
+      document.getElementById('selectAll').checked = false;
+      
+      showToast('成功', `${unmarkedIndices.length}张卡牌已移至"已删"列表`);
+    }
+  }
+}
+
+// === 全选/取消全选 ===
+function toggleSelectAll() {
+  const selectAll = document.getElementById('selectAll');
+  const checkboxes = document.querySelectorAll('.card-checkbox');
+  
+  // 如果是取消全选，直接执行
+  if (!selectAll.checked) {
+    checkboxes.forEach(cb => {
+      cb.checked = false;
+      selectedCards.delete(parseInt(cb.dataset.id));
+    });
+    return;
+  }
+  
+  // 检查是否有标记的卡牌
+  const markedIndices = [];
+  const unmarkedIndices = [];
+  
+  checkboxes.forEach(cb => {
+    const id = parseInt(cb.dataset.id);
+    if (cards[id] && cards[id].markedForDelete) {
+      markedIndices.push(id);
+    } else {
+      unmarkedIndices.push(id);
+    }
+  });
+  
+  // 如果没有标记的卡牌，直接全选
+  if (markedIndices.length === 0) {
+    checkboxes.forEach(cb => {
+      cb.checked = true;
+      selectedCards.add(parseInt(cb.dataset.id));
+    });
+    return;
+  }
+  
+  // 有标记的卡牌，显示自定义确认对话框
+  const content = `
+    <div class="space-y-4">
+      <p class="text-gray-700 dark:text-gray-300">检测到 <span class="text-red-500 font-bold">${markedIndices.length}</span> 张已标记删除的卡牌</p>
+      <p class="text-sm text-gray-500 dark:text-gray-400">请选择要包含的卡牌：</p>
+      <div class="flex flex-col gap-2">
+        <button onclick="confirmSelectAll(false)" class="w-full bg-primary text-white py-3 px-4 rounded-lg hover:bg-primary/90 transition-colors flex items-center justify-center gap-2">
+          <i class="fa fa-check-square-o"></i>
+          仅选择未标记的卡牌 (${unmarkedIndices.length}张)
+        </button>
+        <button onclick="confirmSelectAll(true)" class="w-full bg-red-500 text-white py-3 px-4 rounded-lg hover:bg-red-600 transition-colors flex items-center justify-center gap-2">
+          <i class="fa fa-exclamation-triangle"></i>
+          选择所有卡牌 (包含${markedIndices.length}张已标记)
+        </button>
+        <button onclick="cancelSelectAll()" class="w-full bg-gray-200 dark:bg-gray-600 text-gray-700 dark:text-gray-200 py-2 px-4 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          <i class="fa fa-times mr-1"></i>取消
+        </button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '全选确认');
+}
+
+// 确认全选
+function confirmSelectAll(includeMarked) {
+  const checkboxes = document.querySelectorAll('.card-checkbox');
+  
+  checkboxes.forEach(cb => {
+    const id = parseInt(cb.dataset.id);
+    const card = cards[id];
+    
+    if (includeMarked) {
+      // 选择所有
+      cb.checked = true;
+      selectedCards.add(id);
+    } else {
+      // 仅选择未标记的
+      if (card && !card.markedForDelete) {
+        cb.checked = true;
+        selectedCards.add(id);
+      } else {
+        cb.checked = false;
+        selectedCards.delete(id);
+      }
+    }
+  });
+  
+  // 更新全选复选框状态
+  const selectAll = document.getElementById('selectAll');
+  if (!includeMarked) {
+    // 如果没有全选，取消全选框的选中状态
+    const unmarkedCount = cards.filter(c => !c.markedForDelete).length;
+    selectAll.checked = unmarkedCount > 0;
+  }
+  
+  closeModal();
+  showToast('提示', includeMarked ? `已选择所有卡牌（含已标记）` : '已选择未标记的卡牌', 'info');
+}
+
+// 取消全选
+function cancelSelectAll() {
+  const selectAll = document.getElementById('selectAll');
+  selectAll.checked = false;
+  closeModal();
+}
+
+// === 排序 ===
+function sortCards() {
+  const sortSel = document.getElementById('sortSel');
+  const sortType = sortSel.value;
+  let sorted = [...cards];
+  
+  switch(sortType) {
+    case 'name':
+      sorted.sort((a, b) => (a.name || '').localeCompare(b.name || ''));
+      break;
+    case 'series':
+      sorted.sort((a, b) => (a.series || '').localeCompare(b.series || ''));
+      break;
+    case 'source':
+      sorted.sort((a, b) => (a.source || '').localeCompare(b.source || ''));
+      break;
+    case 'price-desc':
+      sorted.sort((a, b) => (b.price || 0) - (a.price || 0));
+      break;
+    case 'price-asc':
+      sorted.sort((a, b) => (a.price || 0) - (b.price || 0));
+      break;
+    case 'qty-desc':
+      sorted.sort((a, b) => (b.qty || 0) - (a.qty || 0));
+      break;
+  }
+  
+  render(sorted);
+}
+
+// === 主题切换 ===
+function toggleTheme() {
+  const themeToggle = document.getElementById('themeToggle');
+  document.documentElement.classList.toggle('dark');
+  const isDark = document.documentElement.classList.contains('dark');
+  themeToggle.innerHTML = isDark ? '<i class="fa fa-sun-o text-yellow-500"></i>' : '<i class="fa fa-moon-o"></i>';
+  localStorage.setItem('theme', isDark ? 'dark' : 'light');
+}
+
+// === 备份数据 ===
+function backupData() {
+  const data = {
+    cards: cards,
+    exportTime: new Date().toISOString(),
+    version: '1.0'
+  };
+  const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TCG_Backup_${new Date().toISOString().slice(0, 10)}.json`;
+  a.click();
+  URL.revokeObjectURL(url);
+  showToast('成功', '数据已备份');
+}
+
+// === 恢复数据 ===
+function restoreData() {
+  document.getElementById('backupInput').click();
+}
+
+function handleBackupFile(e) {
+  const file = e.target.files[0];
+  if (!file) return;
+
+  const reader = new FileReader();
+  reader.onload = function(ev) {
+    try {
+      const data = JSON.parse(ev.target.result);
+      if (data.cards && Array.isArray(data.cards)) {
+        cards = data.cards;
+        save();
+        render();
+        showToast('成功', '数据已恢复');
+      } else {
+        showToast('错误', '无效的备份文件', 'error');
+      }
+    } catch (err) {
+      showToast('错误', '文件解析失败', 'error');
+    }
+  };
+  reader.readAsText(file);
+  e.target.value = '';
+}
+
+// === 显示已删除卡牌管理器 ===
+function showDeletedCardsManager() {
+  const deletedCards = cards.filter(card => card.markedForDelete);
+
+  const content = `
+    <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
+      <div class="flex justify-between items-center mb-4">
+        <span class="text-sm text-gray-500 dark:text-gray-400">共 ${deletedCards.length} 张已删除卡牌</span>
+        ${deletedCards.length > 0 ? `
+          <button onclick="permanentlyDeleteAll()" class="text-xs bg-red-500 hover:bg-red-600 text-white px-3 py-1 rounded">
+            <i class="fa fa-trash"></i> 清空回收站
+          </button>
+        ` : ''}
+      </div>
+      
+      ${deletedCards.length === 0 ? `
+        <div class="text-center py-8 text-gray-400">
+          <i class="fa fa-trash-o text-4xl mb-2"></i>
+          <p>暂无已删除的卡牌</p>
+        </div>
+      ` : `
+        <div class="space-y-2">
+          ${deletedCards.map((card, idx) => `
+            <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg border border-gray-200 dark:border-gray-600">
+              ${card.image ? `
+                <img src="${card.image}" class="w-12 h-16 object-cover rounded" alt="${card.name}">
+              ` : `
+                <div class="w-12 h-16 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-400">无图</div>
+              `}
+              <div class="flex-1 min-w-0">
+                <div class="font-medium text-sm truncate">${card.name}</div>
+                <div class="text-xs text-gray-500 dark:text-gray-400">
+                  ${card.category} · ${card.series || '-'} · ${card.no || '-'}
+                </div>
+              </div>
+              <div class="flex gap-1">
+                <button onclick="restoreDeletedCard(${cards.indexOf(card)})" class="p-2 text-green-500 hover:bg-green-100 dark:hover:bg-green-900/30 rounded" title="恢复">
+                  <i class="fa fa-undo"></i>
+                </button>
+                <button onclick="permanentlyDeleteCard(${cards.indexOf(card)})" class="p-2 text-red-500 hover:bg-red-100 dark:hover:bg-red-900/30 rounded" title="彻底删除">
+                  <i class="fa fa-trash"></i>
+                </button>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      `}
+
+      <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+        <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          <i class="fa fa-times mr-1"></i>关闭
+        </button>
+      </div>
+    </div>
+  `;
+
+  showModal(content, '已删除卡牌管理');
+}
+
+// === 恢复已删除的卡牌 ===
+function restoreDeletedCard(index) {
+  cards[index].markedForDelete = false;
+  save();
+  render();
+  updateDeletedCount(); // 确保数字更新
+  showDeletedCardsManager(); // 刷新显示
+  showToast('成功', '卡牌已恢复');
+}
+
+// === 彻底删除单张卡牌 ===
+function permanentlyDeleteCard(index) {
+  if (!confirm('确定要彻底删除这张卡牌吗？此操作不可恢复！')) {
+    return;
+  }
+  
+  cards.splice(index, 1);
+  save();
+  render();
+  updateDeletedCount(); // 确保数字更新
+  showDeletedCardsManager(); // 刷新显示
+  showToast('成功', '卡牌已彻底删除');
+}
+
+// === 清空所有已删除卡牌 ===
+function permanentlyDeleteAll() {
+  // 第一次确认
+  if (!confirm('确定要清空回收站吗？所有已删除的卡牌将被彻底删除。')) {
+    return;
+  }
+  
+  // 第二次确认
+  if (!confirm('【二次确认】此操作不可恢复！确定要清空所有已删除的卡牌吗？')) {
+    return;
+  }
+  
+  cards = cards.filter(card => !card.markedForDelete);
+  save();
+  render();
+  updateDeletedCount(); // 确保数字更新
+  showDeletedCardsManager(); // 刷新显示
+  showToast('成功', '回收站已清空');
+}
+
+// === 合并子集管理器 ===
+function showMergeGroupManager() {
+  // 获取选中的卡牌
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  const selectedIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+  
+  if (selectedIndices.length === 0) {
+    showToast('提示', '请先勾选要合并的卡牌', 'warning');
+    return;
+  }
+  
+  // 获取已存在的分组
+  const groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  const content = `
+    <div class="space-y-4">
+      <div class="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg">
+        <p class="text-sm text-purple-700 dark:text-purple-300">
+          <i class="fa fa-info-circle mr-1"></i>
+          已选中 <strong>${selectedIndices.length}</strong> 张卡牌
+        </p>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-2">选择或创建分组</label>
+        <div class="space-y-2">
+          ${groups.length > 0 ? `
+            <div class="max-h-32 overflow-y-auto space-y-1 border border-gray-200 dark:border-gray-700 rounded-lg p-2">
+              ${groups.map((group, index) => `
+                <label class="flex items-center gap-2 p-2 hover:bg-gray-50 dark:hover:bg-gray-700 rounded cursor-pointer">
+                  <input type="radio" name="groupSelect" value="${group.name}" class="text-purple-600 focus:ring-purple-500">
+                  <span class="text-sm">${group.name} (${group.cardIds?.length || 0}张)</span>
+                </label>
+              `).join('')}
+            </div>
+            <div class="text-center text-gray-400 text-xs">— 或创建新分组 —</div>
+          ` : ''}
+          <input type="text" id="newGroupName" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="输入新分组名称">
+        </div>
+      </div>
+      
+      <div class="flex gap-2 pt-2">
+        <button onclick="confirmMergeGroup()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg transition-colors">
+          <i class="fa fa-check mr-1"></i>确认合并
+        </button>
+        <button onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          取消
+        </button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '合并子集');
+  
+  // 保存选中的索引到全局变量，供确认函数使用
+  window.selectedMergeIndices = selectedIndices;
+}
+
+// === 确认合并分组 ===
+function confirmMergeGroup() {
+  const selectedRadio = document.querySelector('input[name="groupSelect"]:checked');
+  const newGroupName = document.getElementById('newGroupName')?.value?.trim();
+  
+  let groupName = '';
+  let isNewGroup = false;
+  
+  if (selectedRadio) {
+    groupName = selectedRadio.value;
+  } else if (newGroupName) {
+    groupName = newGroupName;
+    isNewGroup = true;
+  } else {
+    showToast('提示', '请选择或输入分组名称', 'warning');
+    return;
+  }
+  
+  // 获取现有分组
+  let groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  if (isNewGroup) {
+    // 检查是否已存在同名分组
+    if (groups.some(g => g.name === groupName)) {
+      showToast('提示', '该分组名称已存在', 'warning');
+      return;
+    }
+    // 创建新分组
+    groups.push({
+      name: groupName,
+      cardIds: [],
+      createdAt: Date.now()
+    });
+  }
+  
+  // 找到目标分组
+  const targetGroup = groups.find(g => g.name === groupName);
+  if (!targetGroup) {
+    showToast('错误', '分组不存在', 'error');
+    return;
+  }
+  
+  // 将选中的卡牌添加到分组
+  const selectedIndices = window.selectedMergeIndices || [];
+  let addedCount = 0;
+  
+  selectedIndices.forEach(index => {
+    const card = cards[index];
+    if (card && !targetGroup.cardIds.includes(card.id || index)) {
+      targetGroup.cardIds.push(card.id || index);
+      // 给卡牌添加分组标记
+      if (!card.groups) card.groups = [];
+      if (!card.groups.includes(groupName)) {
+        card.groups.push(groupName);
+      }
+      addedCount++;
+    }
+  });
+  
+  // 保存分组
+  localStorage.setItem('tcgCardGroups', JSON.stringify(groups));
+  save();
+  
+  // 清除选中状态
+  document.querySelectorAll('.card-checkbox:checked').forEach(cb => cb.checked = false);
+  updateBatchButton();
+  
+  closeModal();
+  showToast('成功', `已将 ${addedCount} 张卡牌合并到「${groupName}」分组`);
+  render();
+}
+
+// === 海贼王金句数组 ===
+const onePieceQuotes = [
+  "我是要成为海贼王的男人！",
+  "人的梦想，是不会终结的！",
+  "我不是天生的王者，但我骨子里流动着不让我低头的血液。",
+  "如果放弃，我将终身遗憾。",
+  "痛苦的时候不能在一起的话，那还算什么伙伴。",
+  "总有一天，我会聚集一群不输给这些人的伙伴。",
+  "我的命是你的，我的剑也是你的。",
+  "背上的伤痕是剑士的耻辱。",
+  "能原谅女人谎言的，才是真正的男人。",
+  "为了路飞，我心甘情愿成为真正的怪物。",
+  "将过去和羁绊全部丢弃，不要吝惜那为了梦想流下的泪水。",
+  "正义必胜吗？当然，胜利的就是正义。",
+  "不知所措，才是人生。",
+  "弱者连选择死亡的权利都没有。",
+  "我要成为世界第一的剑豪！"
+];
+
+let currentQuoteIndex = 0;
+let petQuoteInterval;
+
+// === 宠物互动 - 鼠标进入 ===
+function petInteract() {
+  const pet = document.querySelector('#onePiecePet > div > div:first-child');
+  if (pet) {
+    pet.classList.remove('animate-bounce-slow');
+    pet.classList.add('animate-shake');
+    setTimeout(() => {
+      pet.classList.remove('animate-shake');
+      pet.classList.add('animate-bounce-slow');
+    }, 500);
+  }
+}
+
+// === 宠物点击 ===
+function petClick() {
+  const pet = document.querySelector('#onePiecePet > div > div:first-child');
+  const quoteText = document.getElementById('quoteText');
+  
+  // 跳跃动画
+  if (pet) {
+    pet.classList.remove('animate-bounce-slow');
+    pet.classList.add('animate-jump');
+    setTimeout(() => {
+      pet.classList.remove('animate-jump');
+      pet.classList.add('animate-bounce-slow');
+    }, 600);
+  }
+  
+  // 切换金句
+  currentQuoteIndex = (currentQuoteIndex + 1) % onePieceQuotes.length;
+  if (quoteText) {
+    quoteText.style.opacity = '0';
+    setTimeout(() => {
+      quoteText.textContent = onePieceQuotes[currentQuoteIndex];
+      quoteText.style.opacity = '1';
+    }, 200);
+  }
+}
+
+// === 自动轮播金句 ===
+function startPetQuoteRotation() {
+  petQuoteInterval = setInterval(() => {
+    const quoteText = document.getElementById('quoteText');
+    if (quoteText) {
+      currentQuoteIndex = (currentQuoteIndex + 1) % onePieceQuotes.length;
+      quoteText.style.opacity = '0';
+      setTimeout(() => {
+        quoteText.textContent = onePieceQuotes[currentQuoteIndex];
+        quoteText.style.opacity = '1';
+      }, 300);
+    }
+  }, 8000); // 每8秒切换一次
+}
+
+// === 显示使用说明 ===
+function showHelp() {
+  const content = `
+    <div class="space-y-4 text-sm text-gray-700 dark:text-gray-300 max-h-[70vh] overflow-y-auto pr-2">
+      
+      <!-- 快速开始 -->
+      <div class="bg-blue-50 dark:bg-blue-900/20 rounded-lg p-3">
+        <h3 class="font-semibold text-blue-600 dark:text-blue-400 mb-2 flex items-center gap-2">
+          <i class="fa fa-rocket"></i> 快速开始
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• 点击<strong>"新增卡牌"</strong>按钮添加您的第一张卡牌</li>
+          <li>• 填写卡牌名称、编号、类型、价格等信息</li>
+          <li>• 点击保存即可添加到收藏库</li>
+        </ul>
+      </div>
+      
+      <!-- 核心功能 -->
+      <div>
+        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+          <i class="fa fa-star text-yellow-500"></i> 核心功能
+        </h3>
+        <div class="grid grid-cols-2 gap-2 text-xs">
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+            <strong class="text-primary">新增卡牌</strong>
+            <p class="text-gray-500 mt-1">添加新卡牌到收藏库</p>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+            <strong class="text-blue-500">导出/导入</strong>
+            <p class="text-gray-500 mt-1">备份和恢复数据</p>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+            <strong class="text-purple-500">合并子集</strong>
+            <p class="text-gray-500 mt-1">将卡牌归集到分组</p>
+          </div>
+          <div class="bg-gray-50 dark:bg-gray-700/50 rounded p-2">
+            <strong class="text-emerald-500">统计</strong>
+            <p class="text-gray-500 mt-1">查看收藏数据分析</p>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 数据管理 -->
+      <div>
+        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+          <i class="fa fa-database text-blue-500"></i> 数据管理
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• <strong>导出数据</strong>：将所有卡牌导出为Excel文件备份</li>
+          <li>• <strong>导入数据</strong>：从Excel文件恢复卡牌数据</li>
+          <li>• <strong>批量删除</strong>：勾选卡牌后批量删除，未勾选时清空全部</li>
+          <li>• <strong>已删卡牌</strong>：查看和恢复已删除的卡牌</li>
+        </ul>
+      </div>
+      
+      <!-- 价格管理 -->
+      <div>
+        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+          <i class="fa fa-money text-emerald-500"></i> 价格管理
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• <strong>购入价</strong>：记录购买时的价格</li>
+          <li>• <strong>市场价</strong>：当前市场参考价格</li>
+          <li>• <strong>出售价</strong>：计划出售的价格</li>
+          <li>• <strong>查价功能</strong>：点击市场价下方的查价按钮查询实时价格</li>
+          <li>• <strong>汇率换算</strong>：支持CNY/USD/JPY等多种货币自动换算</li>
+        </ul>
+      </div>
+      
+      <!-- 分组管理 -->
+      <div>
+        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+          <i class="fa fa-folder-open text-purple-500"></i> 分组管理
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• <strong>合并子集</strong>：选中卡牌后归集到自定义分组</li>
+          <li>• <strong>分组</strong>：查看和管理所有分组</li>
+          <li>• 一张卡牌可以属于多个分组</li>
+        </ul>
+      </div>
+      
+      <!-- 背景设置 -->
+      <div>
+        <h3 class="font-semibold text-gray-800 dark:text-gray-200 mb-2 flex items-center gap-2">
+          <i class="fa fa-image text-pink-500"></i> 背景设置
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• <strong>切换背景</strong>：点击紫色图片按钮上传自定义背景图</li>
+          <li>• <strong>主题颜色</strong>：点击画笔按钮切换配色主题</li>
+          <li>• <strong>空闲虚化</strong>：30秒无操作后界面虚化，显示背景图片</li>
+        </ul>
+      </div>
+      
+      <!-- 快捷键 -->
+      <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3">
+        <h3 class="font-semibold text-amber-600 dark:text-amber-400 mb-2 flex items-center gap-2">
+          <i class="fa fa-keyboard"></i> 小技巧
+        </h3>
+        <ul class="space-y-1 text-xs">
+          <li>• 鼠标悬停在按钮上可查看功能提示</li>
+          <li>• 点击宠物可切换海贼王金句</li>
+          <li>• 表格支持按名称、价格、数量排序</li>
+          <li>• 勾选卡牌可进行批量操作</li>
+        </ul>
+      </div>
+      
+    </div>
+  `;
+  showModal(content, '📖 使用说明');
+}
+
+// === 切换网页背景 ===
+function changeBackground() {
+  // 创建文件选择器
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (file) {
+      const reader = new FileReader();
+      reader.onload = function(event) {
+        const imageUrl = event.target.result;
+        // 保存到localStorage
+        localStorage.setItem('tcgCustomBackground', imageUrl);
+        // 应用背景
+        applyCustomBackground(imageUrl);
+        showToast('成功', '背景图片已更换！', 'success');
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+  input.click();
+}
+
+// === 应用自定义背景 ===
+function applyCustomBackground(imageUrl) {
+  // 创建或更新背景层
+  let bgLayer = document.getElementById('customBackgroundLayer');
+  if (!bgLayer) {
+    bgLayer = document.createElement('div');
+    bgLayer.id = 'customBackgroundLayer';
+    bgLayer.style.cssText = 'position:fixed;top:0;left:0;width:100%;height:100%;z-index:-1;background-size:cover;background-position:center;background-repeat:no-repeat;transition:opacity 0.5s ease;';
+    document.body.insertBefore(bgLayer, document.body.firstChild);
+  }
+  bgLayer.style.backgroundImage = `url(${imageUrl})`;
+  bgLayer.style.opacity = '1';
+}
+
+// === 移除自定义背景 ===
+function removeCustomBackground() {
+  localStorage.removeItem('tcgCustomBackground');
+  const bgLayer = document.getElementById('customBackgroundLayer');
+  if (bgLayer) {
+    bgLayer.style.opacity = '0';
+    setTimeout(() => bgLayer.remove(), 500);
+  }
+  showToast('提示', '已恢复默认背景', 'info');
+}
+
+// === 显示更多菜单（移动端） ===
+function showMoreMenu() {
+  const content = `
+    <div class="space-y-2">
+      <button onclick="closeModal(); exportToExcel();" class="w-full flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+        <i class="fa fa-download text-blue-500"></i>
+        <span class="text-sm">导出数据</span>
+      </button>
+      <button onclick="closeModal(); importFromExcel();" class="w-full flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 rounded-lg hover:bg-blue-100 dark:hover:bg-blue-900/30 transition-colors">
+        <i class="fa fa-upload text-blue-500"></i>
+        <span class="text-sm">导入数据</span>
+      </button>
+      <button onclick="closeModal(); showMergeGroupManager();" class="w-full flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-colors">
+        <i class="fa fa-object-group text-purple-500"></i>
+        <span class="text-sm">合并子集</span>
+      </button>
+      <button onclick="closeModal(); batchDeleteOrClear();" class="w-full flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/30 transition-colors">
+        <i class="fa fa-trash text-red-500"></i>
+        <span class="text-sm">批量删除</span>
+      </button>
+      <button onclick="closeModal(); showDeletedCardsManager();" class="w-full flex items-center gap-3 p-3 bg-orange-50 dark:bg-orange-900/20 rounded-lg hover:bg-orange-100 dark:hover:bg-orange-900/30 transition-colors">
+        <i class="fa fa-trash-o text-orange-500"></i>
+        <span class="text-sm">已删卡牌</span>
+      </button>
+      <button onclick="closeModal(); showBgColorPicker();" class="w-full flex items-center gap-3 p-3 bg-pink-50 dark:bg-pink-900/20 rounded-lg hover:bg-pink-100 dark:hover:bg-pink-900/30 transition-colors">
+        <i class="fa fa-paint-brush text-pink-500"></i>
+        <span class="text-sm">主题颜色</span>
+      </button>
+    </div>
+  `;
+  showModal(content, '更多功能');
+}
+
+// === 显示分组管理器 ===
+function showGroupManager() {
+  const groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  if (groups.length === 0) {
+    showToast('提示', '暂无分组，请先创建分组', 'warning');
+    return;
+  }
+  
+  const content = `
+    <div class="space-y-4">
+      <div class="space-y-2 max-h-64 overflow-y-auto">
+        ${groups.map((group, index) => `
+          <div class="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
+            <div class="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+              <i class="fa fa-folder text-purple-500"></i>
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-sm truncate">${group.name}</p>
+              <p class="text-xs text-gray-500">${group.cardIds?.length || 0} 张卡牌 · ${new Date(group.createdAt).toLocaleDateString()}</p>
+            </div>
+            <div class="flex gap-1">
+              <button onclick="viewGroupCards('${group.name}')" class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors" title="查看">
+                <i class="fa fa-eye text-xs"></i>
+              </button>
+              <button onclick="deleteGroup('${group.name}')" class="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors" title="删除">
+                <i class="fa fa-trash text-xs"></i>
+              </button>
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">关闭</button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '分组管理');
+}
+
+// === 查看分组卡牌 ===
+function viewGroupCards(groupName) {
+  const groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  const group = groups.find(g => g.name === groupName);
+  
+  if (!group || !group.cardIds || group.cardIds.length === 0) {
+    showToast('提示', '该分组暂无卡牌', 'warning');
+    return;
+  }
+  
+  // 获取分组中的卡牌
+  const groupCards = cards.filter(card => group.cardIds.includes(card.id) || group.cardIds.includes(cards.indexOf(card)));
+  
+  const content = `
+    <div class="space-y-4">
+      <div class="flex justify-between items-center">
+        <span class="text-sm text-gray-500">共 ${groupCards.length} 张卡牌</span>
+        <button onclick="showGroupManager()" class="text-sm text-purple-600 hover:text-purple-700">
+          <i class="fa fa-arrow-left mr-1"></i>返回
+        </button>
+      </div>
+      
+      <div class="space-y-2 max-h-80 overflow-y-auto">
+        ${groupCards.map((card, idx) => `
+          <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-12 h-16 bg-gray-200 dark:bg-gray-600 rounded overflow-hidden flex-shrink-0">
+              ${card.image ? `<img src="${card.image}" class="w-full h-full object-cover">` : '<div class="w-full h-full flex items-center justify-center text-gray-400 text-xs">无图</div>'}
+            </div>
+            <div class="flex-1 min-w-0">
+              <p class="font-medium text-sm truncate">${card.name}</p>
+              <p class="text-xs text-gray-500">${card.series || ''} ${card.no || ''}</p>
+            </div>
+            <button onclick="removeCardFromGroup('${groupName}', ${cards.indexOf(card)})" class="p-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-lg transition-colors" title="从分组移除">
+              <i class="fa fa-times text-xs"></i>
+            </button>
+          </div>
+        `).join('')}
+      </div>
+    </div>
+  `;
+  
+  showModal(content, `分组：${groupName}`);
+}
+
+// === 从分组移除卡牌 ===
+function removeCardFromGroup(groupName, cardIndex) {
+  let groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  const groupIndex = groups.findIndex(g => g.name === groupName);
+  
+  if (groupIndex === -1) return;
+  
+  const card = cards[cardIndex];
+  if (card) {
+    // 从分组中移除
+    groups[groupIndex].cardIds = groups[groupIndex].cardIds.filter(id => id !== (card.id || cardIndex));
+    // 从卡牌的分组列表中移除
+    if (card.groups) {
+      card.groups = card.groups.filter(g => g !== groupName);
+    }
+  }
+  
+  localStorage.setItem('tcgCardGroups', JSON.stringify(groups));
+  save();
+  
+  showToast('成功', '已从分组中移除');
+  viewGroupCards(groupName); // 刷新显示
+}
+
+// === 删除分组 ===
+function deleteGroup(groupName) {
+  if (!confirm(`确定要删除分组「${groupName}」吗？分组内的卡牌不会被删除。`)) {
+    return;
+  }
+  
+  let groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  // 从所有卡牌中移除该分组标记
+  cards.forEach(card => {
+    if (card.groups) {
+      card.groups = card.groups.filter(g => g !== groupName);
+    }
+  });
+  
+  // 删除分组
+  groups = groups.filter(g => g.name !== groupName);
+  
+  localStorage.setItem('tcgCardGroups', JSON.stringify(groups));
+  save();
+  
+  showToast('成功', '分组已删除');
+  showGroupManager(); // 刷新显示
+}
+
+// === 统计功能 ===
+function showStats() {
+  const cardTypeCount = {};
+  let totalValue = 0;
+  
+  cards.forEach(card => {
+    const type = card.cardType || '裸卡';
+    cardTypeCount[type] = (cardTypeCount[type] || 0) + (parseInt(card.qty) || 0);
+    totalValue += (parseFloat(card.price) || 0) * (parseInt(card.qty) || 0);
+  });
+  
+  const content = `
+    <div class="space-y-6">
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-primary/10 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-600 dark:text-gray-400">总卡牌数</p>
+          <p class="text-2xl font-bold text-primary">${cards.reduce((sum, c) => sum + (parseInt(c.qty) || 0), 0)}</p>
+        </div>
+        <div class="bg-secondary/10 rounded-lg p-4 text-center">
+          <p class="text-sm text-gray-600 dark:text-gray-400">总价值</p>
+          <p class="text-2xl font-bold text-secondary">${totalValue.toFixed(2)} CNY</p>
+        </div>
+      </div>
+      
+      <div>
+        <h4 class="font-medium mb-3">卡类型分布</h4>
+        <div class="space-y-2">
+          ${Object.entries(cardTypeCount).map(([type, count]) => `
+            <div class="flex justify-between items-center">
+              <span class="px-2 py-1 rounded text-xs ${type === '评级卡' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}">${type}</span>
+              <span class="font-medium">${count} 张</span>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '收藏统计');
+}
+
+// === 背景颜色选择器 ===
+function showBgColorPicker() {
+  const colors = [
+    { name: '默认紫', value: 'from-blue-600 via-purple-600 to-pink-600', preview: 'bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600' },
+    { name: '深海蓝', value: 'from-blue-800 via-blue-600 to-cyan-500', preview: 'bg-gradient-to-r from-blue-800 via-blue-600 to-cyan-500' },
+    { name: '森林绿', value: 'from-green-800 via-emerald-600 to-teal-500', preview: 'bg-gradient-to-r from-green-800 via-emerald-600 to-teal-500' },
+    { name: '日落橙', value: 'from-orange-600 via-red-500 to-pink-500', preview: 'bg-gradient-to-r from-orange-600 via-red-500 to-pink-500' },
+    { name: '暗夜黑', value: 'from-gray-900 via-gray-800 to-gray-700', preview: 'bg-gradient-to-r from-gray-900 via-gray-800 to-gray-700' },
+    { name: '天空蓝', value: 'from-sky-400 via-blue-500 to-indigo-500', preview: 'bg-gradient-to-r from-sky-400 via-blue-500 to-indigo-500' },
+    { name: '玫瑰粉', value: 'from-pink-400 via-rose-500 to-red-500', preview: 'bg-gradient-to-r from-pink-400 via-rose-500 to-red-500' },
+    { name: '薄荷绿', value: 'from-teal-400 via-emerald-400 to-green-400', preview: 'bg-gradient-to-r from-teal-400 via-emerald-400 to-green-400' }
+  ];
+  
+  const content = `
+    <div class="space-y-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400">选择首页背景颜色主题：</p>
+      <div class="grid grid-cols-2 gap-3">
+        ${colors.map(color => `
+          <button onclick="setBgColor('${color.value}')" class="flex items-center gap-2 p-3 rounded-lg border-2 border-transparent hover:border-primary transition-all ${localStorage.getItem('bgColor') === color.value ? 'border-primary ring-2 ring-primary/20' : ''}">
+            <div class="w-8 h-8 rounded-lg ${color.preview}"></div>
+            <span class="text-sm font-medium">${color.name}</span>
+          </button>
+        `).join('')}
+      </div>
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
+        <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">关闭</button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '设置背景颜色');
+}
+
+// === 设置背景颜色 ===
+function setBgColor(colorValue) {
+  localStorage.setItem('bgColor', colorValue);
+  const header = document.querySelector('header');
+  if (header) {
+    header.className = `bg-gradient-to-r ${colorValue} text-white shadow-lg sticky top-0 z-40`;
+  }
+  closeModal();
+  showToast('成功', '背景颜色已更新');
+}
+
+// === 历史记录 ===
+function showHistory() {
+  const content = `
+    <div class="space-y-3 max-h-96 overflow-y-auto">
+      ${operationHistory.length === 0 ? '<p class="text-center text-gray-500">暂无历史记录</p>' : 
+        operationHistory.slice().reverse().map(h => `
+          <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+            <div class="w-2 h-2 rounded-full ${h.action === 'save' ? 'bg-green-500' : 'bg-blue-500'}"></div>
+            <div class="flex-1">
+              <p class="font-medium text-sm">${h.details}</p>
+              <p class="text-xs text-gray-500">${new Date(h.timestamp).toLocaleString()}</p>
+            </div>
+          </div>
+        `).join('')
+      }
+    </div>
+  `;
+  
+  showModal(content, '操作历史');
+}
+
+// === 备份管理 ===
+function showBackupManager() {
+  const backups = JSON.parse(localStorage.getItem('tcgBackups')) || [];
+  
+  const content = `
+    <div class="space-y-4">
+      <div class="flex gap-2">
+        <button onclick="createBackup()" class="flex-1 bg-primary hover:bg-primary/90 text-white px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+          <i class="fa fa-plus-circle"></i> 创建备份
+        </button>
+        <button onclick="importBackupFromFile()" class="flex-1 bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-800 dark:text-gray-200 px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2">
+          <i class="fa fa-file-text-o"></i> 从文件恢复
+        </button>
+      </div>
+      
+      <div class="border-t border-gray-200 dark:border-gray-700 pt-4">
+        <h4 class="font-medium mb-3">备份历史 (${backups.length}个)</h4>
+        ${backups.length === 0 ? 
+          '<p class="text-center text-gray-500 py-4">暂无备份记录</p>' :
+          `<div class="space-y-2 max-h-64 overflow-y-auto">
+            ${backups.slice().reverse().map((backup, index) => `
+              <div class="flex items-center gap-3 p-3 bg-gray-50 dark:bg-gray-700 rounded-lg">
+                <div class="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center">
+                  <i class="fa fa-database text-primary"></i>
+                </div>
+                <div class="flex-1 min-w-0">
+                  <p class="font-medium text-sm truncate">${backup.name}</p>
+                  <p class="text-xs text-gray-500">${new Date(backup.timestamp).toLocaleString()} · ${backup.cardCount}张卡牌</p>
+                </div>
+                <div class="flex gap-1">
+                  <button onclick="restoreBackup(${backups.length - 1 - index})" class="p-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors" title="恢复">
+                    <i class="fa fa-undo text-xs"></i>
+                  </button>
+                  <button onclick="downloadBackup(${backups.length - 1 - index})" class="p-2 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors" title="下载">
+                    <i class="fa fa-download text-xs"></i>
+                  </button>
+                  <button onclick="deleteBackup(${backups.length - 1 - index})" class="p-2 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors" title="删除">
+                    <i class="fa fa-trash text-xs"></i>
+                  </button>
+                </div>
+              </div>
+            `).join('')}
+          </div>`
+        }
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '数据备份管理');
+}
+
+// 创建备份
+function createBackup() {
+  const name = prompt('请输入备份名称（可选）：', `备份_${new Date().toLocaleString()}`);
+  if (name === null) return; // 用户取消
+  
+  const backup = {
+    id: Date.now(),
+    name: name || `备份_${new Date().toLocaleString()}`,
+    timestamp: new Date().toISOString(),
+    cardCount: cards.length,
+    cards: [...cards],
+    currency: currency,
+    categoryHistory: JSON.parse(localStorage.getItem('tcgCategoryHistory')) || []
+  };
+  
+  const backups = JSON.parse(localStorage.getItem('tcgBackups')) || [];
+  backups.push(backup);
+  
+  // 限制备份数量（最多保留20个）
+  if (backups.length > 20) {
+    backups.shift();
+  }
+  
+  localStorage.setItem('tcgBackups', JSON.stringify(backups));
+  showToast('成功', '数据备份已创建');
+  showBackupManager(); // 刷新界面
+}
+
+// 恢复备份
+function restoreBackup(index) {
+  const backups = JSON.parse(localStorage.getItem('tcgBackups')) || [];
+  if (index < 0 || index >= backups.length) {
+    showToast('错误', '备份不存在', 'error');
+    return;
+  }
+  
+  const backup = backups[index];
+  
+  if (!confirm(`确定要恢复到备份 "${backup.name}" 吗？\n当前数据将被覆盖！`)) {
+    return;
+  }
+  
+  // 二次确认
+  if (!confirm('【二次确认】此操作将覆盖当前所有数据，确定要继续吗？')) {
+    return;
+  }
+  
+  // 恢复数据
+  cards = [...backup.cards];
+  currency = backup.currency || 'CNY';
+  
+  // 恢复分类历史
+  if (backup.categoryHistory) {
+    localStorage.setItem('tcgCategoryHistory', JSON.stringify(backup.categoryHistory));
+  }
+  
+  // 保存到本地存储
+  localStorage.setItem('tcgCards', JSON.stringify(cards));
+  localStorage.setItem('tcgCurrency', currency);
+  
+  // 更新界面
+  if (elements.currencySel) {
+    elements.currencySel.value = currency;
+  }
+  render();
+  updateDeletedCount();
+  
+  showToast('成功', '数据已从备份恢复');
+  closeModal();
+  addHistory('restore', `从备份恢复数据: ${backup.name}`, { backupId: backup.id });
+}
+
+// 下载备份文件
+function downloadBackup(index) {
+  const backups = JSON.parse(localStorage.getItem('tcgBackups')) || [];
+  if (index < 0 || index >= backups.length) {
+    showToast('错误', '备份不存在', 'error');
+    return;
+  }
+  
+  const backup = backups[index];
+  const dataStr = JSON.stringify(backup, null, 2);
+  const blob = new Blob([dataStr], { type: 'application/json' });
+  const url = URL.createObjectURL(blob);
+  
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `TCG备份_${backup.name.replace(/[^a-zA-Z0-9\u4e00-\u9fa5]/g, '_')}.json`;
+  document.body.appendChild(a);
+  a.click();
+  document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+  
+  showToast('成功', '备份文件已下载');
+}
+
+// 删除备份
+function deleteBackup(index) {
+  const backups = JSON.parse(localStorage.getItem('tcgBackups')) || [];
+  if (index < 0 || index >= backups.length) {
+    showToast('错误', '备份不存在', 'error');
+    return;
+  }
+  
+  if (!confirm('确定要删除这个备份吗？')) {
+    return;
+  }
+  
+  backups.splice(index, 1);
+  localStorage.setItem('tcgBackups', JSON.stringify(backups));
+  showToast('成功', '备份已删除');
+  showBackupManager(); // 刷新界面
+}
+
+// 从文件导入备份
+function importBackupFromFile() {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = '.json';
+  input.onchange = function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      try {
+        const backup = JSON.parse(event.target.result);
+        
+        // 验证备份格式
+        if (!backup.cards || !Array.isArray(backup.cards)) {
+          showToast('错误', '无效的备份文件格式', 'error');
+          return;
+        }
+        
+        if (!confirm(`确定要导入备份 "${backup.name || '未命名'}" 吗？\n当前数据将被覆盖！`)) {
+          return;
+        }
+        
+        // 二次确认
+        if (!confirm('【二次确认】此操作将覆盖当前所有数据，确定要继续吗？')) {
+          return;
+        }
+        
+        // 恢复数据
+        cards = [...backup.cards];
+        currency = backup.currency || 'CNY';
+        
+        // 恢复分类历史
+        if (backup.categoryHistory) {
+          localStorage.setItem('tcgCategoryHistory', JSON.stringify(backup.categoryHistory));
+        }
+        
+        // 保存到本地存储
+        localStorage.setItem('tcgCards', JSON.stringify(cards));
+        localStorage.setItem('tcgCurrency', currency);
+        
+        // 更新界面
+        if (elements.currencySel) {
+          elements.currencySel.value = currency;
+        }
+        render();
+        updateDeletedCount();
+        
+        showToast('成功', '备份文件已导入并恢复');
+        closeModal();
+        addHistory('restore', `从文件导入备份: ${backup.name || '未命名'}`, { backupName: backup.name });
+      } catch (err) {
+        showToast('错误', '导入失败：' + err.message, 'error');
+      }
+    };
+    reader.readAsText(file);
+  };
+  input.click();
+}
+
+// === 批量编辑 ===
+function batchEdit() {
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  const hasSelection = checkboxes.length > 0;
+  
+  // 获取所有卡牌（包括已删除的）
+  const allCardsCount = cards.length;
+  const normalCardsCount = cards.filter(c => !c.markedForDelete).length;
+  const deletedCardsCount = cards.filter(c => c.markedForDelete).length;
+  
+  const content = `
+    <form id="batchForm" class="space-y-4">
+      <div class="bg-gray-50 dark:bg-gray-700/50 p-3 rounded-lg">
+        <label class="block text-sm font-medium mb-2">选择操作范围</label>
+        <div class="space-y-2">
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="batchScope" value="selected" ${hasSelection ? 'checked' : 'disabled'} class="text-primary">
+            <span class="text-sm ${hasSelection ? '' : 'text-gray-400'}">仅选中的卡牌 (${checkboxes.length}张)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="batchScope" value="normal" ${!hasSelection ? 'checked' : ''} class="text-primary">
+            <span class="text-sm">所有正常卡牌 (${normalCardsCount}张)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="batchScope" value="deleted" class="text-primary">
+            <span class="text-sm">所有已删除卡牌 (${deletedCardsCount}张)</span>
+          </label>
+          <label class="flex items-center gap-2 cursor-pointer">
+            <input type="radio" name="batchScope" value="all" class="text-primary">
+            <span class="text-sm">所有卡牌 (${allCardsCount}张)</span>
+          </label>
+        </div>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-1">卡类型 (留空保持不变)</label>
+        <select id="batchCardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+          <option value="">保持不变</option>
+          <option value="裸卡">裸卡</option>
+          <option value="评级卡">评级卡</option>
+          <option value="卡册">卡册</option>
+          <option value="卡包">卡包</option>
+        </select>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-1">分类 (留空保持不变)</label>
+        <input type="text" id="batchCategory" list="batchCategoryHistory" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="保持不变">
+        <datalist id="batchCategoryHistory">
+          ${getCategoryHistory().map(c => `<option value="${c}">`).join('')}
+        </datalist>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-1">系列 (留空保持不变)</label>
+        <input type="text" id="batchSeries" list="batchSeriesHistory" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="保持不变">
+        <datalist id="batchSeriesHistory">
+          ${getSeriesHistory().map(s => `<option value="${s}">`).join('')}
+        </datalist>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-1">语言 (留空保持不变)</label>
+        <select id="batchLanguage" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600">
+          <option value="">保持不变</option>
+          <option value="中文">中文</option>
+          <option value="日文">日文</option>
+          <option value="英文">英文</option>
+          <option value="韩文">韩文</option>
+        </select>
+      </div>
+      
+      <div>
+        <label class="block text-sm font-medium mb-1">来源 (留空保持不变)</label>
+        <input type="text" id="batchSource" list="batchSourceHistory" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="保持不变">
+        <datalist id="batchSourceHistory">
+          ${getSourceHistory().map(s => `<option value="${s}">`).join('')}
+        </datalist>
+      </div>
+      
+      <div class="flex gap-3 pt-4">
+        <button type="submit" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">应用</button>
+        <button type="button" onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">取消</button>
+      </div>
+    </form>
+  `;
+  
+  showModal(content, '批量编辑');
+  
+  document.getElementById('batchForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const scope = document.querySelector('input[name="batchScope"]:checked').value;
+    const cardType = document.getElementById('batchCardType').value;
+    const category = document.getElementById('batchCategory').value;
+    const series = document.getElementById('batchSeries').value;
+    const language = document.getElementById('batchLanguage').value;
+    const source = document.getElementById('batchSource').value;
+    
+    // 确定要操作的卡牌索引
+    let targetIndices = [];
+    switch(scope) {
+      case 'selected':
+        targetIndices = Array.from(checkboxes).map(cb => parseInt(cb.dataset.id));
+        break;
+      case 'normal':
+        targetIndices = cards.map((c, i) => c.markedForDelete ? -1 : i).filter(i => i !== -1);
+        break;
+      case 'deleted':
+        targetIndices = cards.map((c, i) => c.markedForDelete ? i : -1).filter(i => i !== -1);
+        break;
+      case 'all':
+        targetIndices = cards.map((c, i) => i);
+        break;
+    }
+    
+    if (targetIndices.length === 0) {
+      showToast('提示', '没有符合条件的卡牌', 'warning');
+      return;
+    }
+    
+    // 应用修改
+    targetIndices.forEach(index => {
+      if (cardType) cards[index].cardType = cardType;
+      if (category) cards[index].category = category;
+      if (series) cards[index].series = series;
+      if (language) cards[index].language = language;
+      if (source) cards[index].source = source;
+    });
+    
+    save();
+    render();
+    closeModal();
+    showToast('成功', `已成功编辑 ${targetIndices.length} 张卡牌`);
+  };
+}
+
+// === 价格预览更新 ===
+function updatePricePreview(type) {
+  // 更新库存
+  updateStock();
+}
+
+// === 更新库存和利润 ===
+function updateStock() {
+  const purchaseQtyInput = document.getElementById('cardPurchaseQty');
+  const saleQtyInput = document.getElementById('cardSaleQty');
+  const stockInput = document.getElementById('cardQty');
+  const purchasePriceInput = document.getElementById('cardPurchasePrice');
+  const purchaseCurrencySelect = document.getElementById('cardPurchaseCurrency');
+  const salePriceInput = document.getElementById('cardSalePrice');
+  const saleCurrencySelect = document.getElementById('cardSaleCurrency');
+  const profitPreview = document.getElementById('profitPreview');
+  
+  // 更新库存
+  if (purchaseQtyInput && saleQtyInput && stockInput) {
+    const purchaseQty = parseInt(purchaseQtyInput.value) || 0;
+    const saleQty = parseInt(saleQtyInput.value) || 0;
+    const stock = purchaseQty - saleQty;
+    
+    stockInput.value = stock;
+    
+    // 根据库存状态改变样式
+    if (stock < 0) {
+      stockInput.className = 'w-full border rounded-lg px-3 py-2 bg-red-100 dark:bg-red-900/30 text-red-600 dark:text-red-400 text-sm cursor-not-allowed';
+    } else if (stock === 0) {
+      stockInput.className = 'w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed';
+    } else {
+      stockInput.className = 'w-full border rounded-lg px-3 py-2 bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 text-sm cursor-not-allowed';
+    }
+  }
+  
+  // 计算利润
+  if (purchasePriceInput && salePriceInput && profitPreview) {
+    const purchasePrice = parseFloat(purchasePriceInput.value) || 0;
+    const purchaseCurrency = purchaseCurrencySelect ? purchaseCurrencySelect.value : 'CNY';
+    const salePrice = parseFloat(salePriceInput.value) || 0;
+    const saleCurrency = saleCurrencySelect ? saleCurrencySelect.value : 'CNY';
+    
+    // 统一转换为CNY计算
+    const purchaseInCNY = purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency];
+    const saleInCNY = saleCurrency === 'CNY' ? salePrice : salePrice / rate[saleCurrency];
+    
+    const profit = saleInCNY - purchaseInCNY;
+    
+    // 显示利润
+    if (profit > 0) {
+      profitPreview.textContent = `+${currencySymbols['CNY']}${profit.toFixed(2)}`;
+      profitPreview.className = 'w-full px-3 py-2 bg-green-100 dark:bg-green-900/30 rounded-lg text-sm text-green-600 dark:text-green-400 font-medium';
+    } else if (profit < 0) {
+      profitPreview.textContent = `${currencySymbols['CNY']}${profit.toFixed(2)}`;
+      profitPreview.className = 'w-full px-3 py-2 bg-red-100 dark:bg-red-900/30 rounded-lg text-sm text-red-600 dark:text-red-400 font-medium';
+    } else {
+      profitPreview.textContent = `${currencySymbols['CNY']}0.00`;
+      profitPreview.className = 'w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400';
+    }
+  }
+}
+
+// === 打开查价网站 ===
+// 保存编辑中的卡牌数据，用于查价后恢复
+let editingCardData = null;
+let editingCardIndex = null;
+
+function openPriceChecker() {
+  const cardName = document.getElementById('cardName')?.value?.trim();
+  const series = document.getElementById('cardSeries')?.value?.trim();
+  const no = document.getElementById('cardNo')?.value?.trim();
+  
+  // 构建搜索关键词
+  let searchQuery = '';
+  if (series && no) {
+    searchQuery = `${series} ${no}`;
+  } else if (cardName) {
+    searchQuery = cardName;
+  } else {
+    showToast('提示', '请先输入卡牌名称或系列编号', 'warning');
+    return;
+  }
+  
+  // 保存当前编辑的卡牌数据
+  editingCardData = {
+    name: cardName,
+    series: series,
+    no: no,
+    category: document.getElementById('cardCategory')?.value || '',
+    categoryCustom: document.getElementById('cardCategoryCustom')?.value || '',
+    image: currentImageBase64,
+    purchaseQty: document.getElementById('cardPurchaseQty')?.value || '0',
+    purchasePrice: document.getElementById('cardPurchasePrice')?.value || '0',
+    purchaseCurrency: document.getElementById('cardPurchaseCurrency')?.value || 'CNY',
+    marketPrice: document.getElementById('cardMarketPrice')?.value || '0',
+    marketCurrency: document.getElementById('cardMarketCurrency')?.value || 'CNY',
+    saleQty: document.getElementById('cardSaleQty')?.value || '0',
+    salePrice: document.getElementById('cardSalePrice')?.value || '0',
+    saleCurrency: document.getElementById('cardSaleCurrency')?.value || 'CNY',
+    language: document.getElementById('cardLanguage')?.value || '中文',
+    cardType: document.getElementById('cardType')?.value || '裸卡',
+    cardTypeCustom: document.getElementById('cardTypeCustom')?.value || '',
+    source: document.getElementById('cardSource')?.value || '',
+    sourceLink: document.getElementById('cardSourceLink')?.value || '',
+    purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo')?.value || '',
+    saleSource: document.getElementById('cardSaleSource')?.value || '',
+    saleLink: document.getElementById('cardSaleLink')?.value || '',
+    saleTrackingNo: document.getElementById('cardSaleTrackingNo')?.value || '',
+    qty: document.getElementById('cardQty')?.value || '0',
+    groups: editingCardData?.groups || []
+  };
+  
+  // 显示查价选项
+  const content = `
+    <div class="space-y-4">
+      <p class="text-sm text-gray-600 dark:text-gray-400">选择查价网站搜索：<strong>${searchQuery}</strong></p>
+      <div class="grid grid-cols-2 gap-3">
+        <a href="https://www.pricecharting.com/search?q=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-indigo-500 hover:bg-indigo-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> PriceCharting
+        </a>
+        <a href="https://snkrdunk.com/en/search?q=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-pink-500 hover:bg-pink-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> SNKRDUNK
+        </a>
+        <a href="https://www.tcgplayer.com/search/all/product?q=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> TCGplayer
+        </a>
+        <a href="https://www.cardmarket.com/en/YuGiOh/Products/Search?searchString=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-orange-500 hover:bg-orange-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> Cardmarket
+        </a>
+        <a href="https://www.ebay.com/sch/i.html?_nkw=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-red-500 hover:bg-red-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> eBay
+        </a>
+        <a href="https://www.1999.co.jp/eng/search?typ1_c=104&word=${encodeURIComponent(searchQuery)}" target="_blank" class="flex items-center justify-center gap-2 p-3 bg-green-500 hover:bg-green-600 text-white rounded-lg transition-colors">
+          <i class="fa fa-external-link"></i> HobbySearch
+        </a>
+      </div>
+      <div class="pt-2">
+        <button onclick="closePriceCheckerAndRestore()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">关闭并返回</button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '选择查价网站');
+}
+
+// 关闭查价弹窗并恢复编辑界面
+function closePriceCheckerAndRestore() {
+  closeModal();
+  // 恢复编辑界面
+  if (editingCardIndex !== null && cards[editingCardIndex]) {
+    // 如果是编辑模式，重新打开编辑界面
+    setTimeout(() => {
+      editCard(editingCardIndex);
+    }, 100);
+  } else if (editingCardData) {
+    // 如果是新增模式，使用保存的数据重新打开新增界面
+    setTimeout(() => {
+      restoreAddForm(editingCardData);
+    }, 100);
+  }
+}
+
+// 恢复新增表单（用于查价后返回）
+function restoreAddForm(cardData) {
+  const content = `
+    <form id="cardForm" class="space-y-3">
+      <!-- 卡牌名称 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">
+          卡牌名称 <span class="text-red-500">*</span>
+        </label>
+        <input type="text" id="cardName" value="${cardData.name || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
+      </div>
+      
+      <!-- 分类 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">分类</label>
+          <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
+            ${generateCategoryOptions(cardData.category)}
+          </select>
+          <input type="text" id="cardCategoryCustom" value="${cardData.categoryCustom || ''}" class="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(cardData.category) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义分类">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">类型</label>
+          <select id="cardType" onchange="handleTypeChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
+            <option value="裸卡" ${cardData.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
+            <option value="评级卡" ${cardData.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+            <option value="卡册" ${cardData.cardType === '卡册' ? 'selected' : ''}>卡册</option>
+            <option value="卡包" ${cardData.cardType === '卡包' ? 'selected' : ''}>卡包</option>
+            <option value="other" ${cardData.cardType !== '裸卡' && cardData.cardType !== '评级卡' && cardData.cardType !== '卡册' && cardData.cardType !== '卡包' ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" id="cardTypeCustom" value="${cardData.cardTypeCustom || ''}" class="${cardData.cardType !== '裸卡' && cardData.cardType !== '评级卡' && cardData.cardType !== '卡册' && cardData.cardType !== '卡包' ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义类型">
+        </div>
+      </div>
+      
+      <!-- 系列和编号 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <label class="block text-sm font-medium mb-1">系列</label>
+          <input type="text" id="cardSeries" value="${cardData.series || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：LOB" onfocus="showSeriesDropdown()" oninput="filterSeriesDropdown(this.value)">
+          <div id="seriesDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">编号</label>
+          <input type="text" id="cardNo" value="${cardData.no || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：001">
+        </div>
+      </div>
+      
+      <!-- 语言、库存、卡类型 -->
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">语言</label>
+          <select id="cardLanguage" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="中文" ${cardData.language === '中文' ? 'selected' : ''}>中文</option>
+            <option value="日文" ${cardData.language === '日文' ? 'selected' : ''}>日文</option>
+            <option value="英文" ${cardData.language === '英文' ? 'selected' : ''}>英文</option>
+            <option value="韩文" ${cardData.language === '韩文' ? 'selected' : ''}>韩文</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">库存 <span class="text-xs text-gray-400">(自动)</span></label>
+          <input type="number" id="cardQty" value="${cardData.qty || 0}" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm cursor-not-allowed">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">卡类型</label>
+          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="裸卡" ${cardData.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
+            <option value="评级卡" ${cardData.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- 来源信息 -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入信息</div>
+          <div class="relative">
+            <label class="block text-sm font-medium mb-1">来源</label>
+            <input type="text" id="cardSource" value="${cardData.source || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：淘宝" onfocus="showSourceDropdown()" oninput="filterSourceDropdown(this.value)">
+            <div id="sourceDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">来源链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSourceLink" value="${cardData.sourceLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardPurchaseTrackingNo" value="${cardData.purchaseTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF123456789">
+          </div>
+        </div>
+        <!-- 右列：出售 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售信息</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售</label>
+            <input type="text" id="cardSaleSource" value="${cardData.saleSource || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：闲鱼">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSaleLink" value="${cardData.saleLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardSaleTrackingNo" value="${cardData.saleTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF987654321">
+          </div>
+        </div>
+      </div>
+      
+      <!-- 价格信息 -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入价格 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入价格</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">购入数量</label>
+            <input type="number" id="cardPurchaseQty" value="${cardData.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">购入价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardPurchasePrice" value="${cardData.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
+              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY" ${cardData.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${cardData.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${cardData.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${cardData.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${cardData.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${cardData.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${cardData.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">市场价 <span class="text-xs text-gray-400">(参考)</span></label>
+            <div class="flex gap-1">
+              <input type="number" id="cardMarketPrice" value="${cardData.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('market')">
+              <select id="cardMarketCurrency" onchange="updatePricePreview('market')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY" ${cardData.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${cardData.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${cardData.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${cardData.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${cardData.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${cardData.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${cardData.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2" title="查价">
+            <i class="fa fa-search"></i> 查价
+          </button>
+        </div>
+        
+        <!-- 右列：出售价格 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售价格</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售数量</label>
+            <input type="number" id="cardSaleQty" value="${cardData.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardSalePrice" value="${cardData.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
+              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                <option value="CNY" ${cardData.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${cardData.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${cardData.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${cardData.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${cardData.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${cardData.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${cardData.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">利润 <span class="text-xs text-gray-400">(自动)</span></label>
+            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
+              自动计算
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 图片上传 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">卡牌照片</label>
+        <div class="flex items-start gap-3">
+          <div id="imagePreview" class="w-24 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800 overflow-hidden">
+            ${cardData.image ? `<img src="${cardData.image}" class="w-full h-full object-cover" alt="卡牌照片">` : '<i class="fa fa-image text-gray-400 text-2xl"></i>'}
+          </div>
+          <div class="flex-1 flex flex-col gap-2">
+            <input type="file" id="cardImage" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+            <button type="button" onclick="document.getElementById('cardImage').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-upload mr-1"></i>${cardData.image ? '更换' : '选择'}
+            </button>
+            <button type="button" onclick="clearImage()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-trash mr-1"></i>清除
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 按钮 -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90 transition-colors">
+          <i class="fa fa-plus mr-1"></i>添加
+        </button>
+        <button type="button" onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          <i class="fa fa-times mr-1"></i>取消
+        </button>
+      </div>
+    </form>
+  `;
+  
+  showModal(content, '新增卡牌');
+  
+  // 恢复图片预览
+  currentImageBase64 = cardData.image || null;
+  
+  // 更新库存和利润显示
+  setTimeout(() => {
+    updateStock();
+  }, 0);
+  
+  // 绑定表单提交事件
+  document.getElementById('cardForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const typeSelect = document.getElementById('cardType');
+    const typeValue = typeSelect.value === 'other' 
+      ? document.getElementById('cardTypeCustom').value.trim() 
+      : typeSelect.value;
+    
+    const categorySelect = document.getElementById('cardCategory');
+    const categoryValue = categorySelect.value === 'other' 
+      ? document.getElementById('cardCategoryCustom').value.trim() 
+      : categorySelect.value;
+    
+    // 保存分类历史记录
+    if (categoryValue && categoryValue !== '其他') {
+      saveCategoryHistory(categoryValue);
+    }
+    
+    // 保存系列历史记录
+    const seriesValue = document.getElementById('cardSeries').value.trim();
+    if (seriesValue) {
+      saveSeriesHistory(seriesValue);
+    }
+    
+    // 保存来源历史记录
+    const sourceValue = document.getElementById('cardSource').value.trim();
+    if (sourceValue) {
+      saveSourceHistory(sourceValue);
+    }
+    
+    const newCard = {
+      id: Date.now(),
+      name: document.getElementById('cardName').value.trim(),
+      series: seriesValue,
+      no: document.getElementById('cardNo').value.trim(),
+      category: categoryValue,
+      purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
+      purchasePrice: parseFloat(document.getElementById('cardPurchasePrice').value) || 0,
+      purchaseCurrency: document.getElementById('cardPurchaseCurrency').value,
+      marketPrice: parseFloat(document.getElementById('cardMarketPrice').value) || 0,
+      marketCurrency: document.getElementById('cardMarketCurrency').value,
+      saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
+      salePrice: parseFloat(document.getElementById('cardSalePrice').value) || 0,
+      saleCurrency: document.getElementById('cardSaleCurrency').value,
+      qty: parseInt(document.getElementById('cardQty').value) || 0,
+      language: document.getElementById('cardLanguage').value,
+      cardType: typeValue,
+      source: sourceValue,
+      sourceLink: document.getElementById('cardSourceLink').value.trim(),
+      purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
+      saleSource: document.getElementById('cardSaleSource').value.trim(),
+      saleLink: document.getElementById('cardSaleLink').value.trim(),
+      saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
+      image: currentImageBase64,
+      groups: [],
+      markedForDelete: false
+    };
+    
+    cards.push(newCard);
+    addHistory('add', '添加卡牌', { card: newCard });
+    showToast('成功', '卡牌已添加');
+    
+    save();
+    render();
+    closeModal();
+    
+    // 清除编辑状态
+    editingCardData = null;
+    editingCardIndex = null;
+    currentImageBase64 = null;
+  };
+}
+
+// === 图片上传处理 ===
+let currentImageBase64 = null;
+
+function handleImageUpload(input) {
+  const file = input.files[0];
+  if (!file) return;
+  
+  // 检查文件类型
+  if (!file.type.startsWith('image/')) {
+    showToast('错误', '请选择图片文件', 'error');
+    return;
+  }
+  
+  // 检查文件大小（限制为 2MB）
+  if (file.size > 2 * 1024 * 1024) {
+    showToast('错误', '图片大小不能超过 2MB', 'error');
+    return;
+  }
+  
+  const reader = new FileReader();
+  reader.onload = function(e) {
+    currentImageBase64 = e.target.result;
+    updateImagePreview(currentImageBase64);
+  };
+  reader.readAsDataURL(file);
+}
+
+function updateImagePreview(base64Image) {
+  const previewDiv = document.getElementById('imagePreview');
+  if (!previewDiv) return;
+  
+  if (base64Image) {
+    previewDiv.innerHTML = `<img src="${base64Image}" class="w-full h-full object-cover" alt="卡牌预览">`;
+  } else {
+    previewDiv.innerHTML = '<i class="fa fa-image text-gray-400 text-2xl"></i>';
+  }
+}
+
+function clearImage() {
+  currentImageBase64 = null;
+  const fileInput = document.getElementById('cardImage');
+  if (fileInput) fileInput.value = '';
+  updateImagePreview(null);
+}
+
+// === 处理类型选择变化 ===
+function handleTypeChange(select) {
+  const customInput = document.getElementById('cardTypeCustom');
+  if (select.value === 'other') {
+    customInput.classList.remove('hidden');
+    customInput.focus();
+  } else {
+    customInput.classList.add('hidden');
+    customInput.value = '';
+  }
+}
+
+// === 显示图片大图 ===
+function showImageModal(imageSrc, cardName) {
+  const content = `
+    <div class="flex flex-col items-center">
+      <img src="${imageSrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}">
+      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">${cardName}</p>
+      <button onclick="closeModal()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+        <i class="fa fa-times mr-1"></i>关闭
+      </button>
+    </div>
+  `;
+  showModal(content, '卡牌图片');
+}
+
+// === 汇率切换 ===
+function changeCurrency() {
+  const currencySel = document.getElementById('currencySel');
+  currency = currencySel.value;
+  localStorage.setItem('tcgCurrency', currency);
+  render();
+  showToast('汇率切换', `已切换到 ${currencySymbols[currency]} ${currency}`, 'info');
+}
+
+// === 搜索 ===
+function performSearch() {
+  const search = document.getElementById('search');
+  const clearSearchBtn = document.getElementById('clearSearch');
+  const kw = search.value.toLowerCase().trim();
+  
+  // 显示/隐藏清空按钮
+  if (kw.length > 0) {
+    clearSearchBtn.classList.remove('hidden');
+  } else {
+    clearSearchBtn.classList.add('hidden');
+  }
+  
+  // 只搜索未标记删除的卡牌
+  const activeCards = cards.filter(c => !c.markedForDelete);
+  
+  // 执行搜索
+  if (kw === '') {
+    render();
+  } else {
+    render(activeCards.filter(c =>
+      (c.name && c.name.toLowerCase().includes(kw)) ||
+      (c.no && c.no.toLowerCase().includes(kw))
+    ));
+  }
+}
+
+// === 清空搜索 ===
+function clearSearch() {
+  const search = document.getElementById('search');
+  const clearSearchBtn = document.getElementById('clearSearch');
+  search.value = '';
+  clearSearchBtn.classList.add('hidden');
+  render();
+  search.focus();
+}
+
+// === Excel 导出 ===
+function exportToExcel() {
+  showToast('导出中', '正在生成Excel文件...', 'info');
+  
+  setTimeout(() => {
+    try {
+      const data = [['名称', '编号', '类型', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种']];
+      cards.forEach(c => data.push([c.name, c.no, c.cardType || '裸卡', c.language || '中文', c.source || '', c.sourceLink || '', c.purchaseTrackingNo || '', c.saleTrackingNo || '', c.markedForDelete ? '是' : '否', c.qty, c.purchasePrice || 0, c.purchaseCurrency || 'CNY', c.marketPrice || 0, c.marketCurrency || 'CNY', c.salePrice || 0, c.saleCurrency || 'CNY']));
+      const wb = XLSX.utils.book_new();
+      const ws = XLSX.utils.aoa_to_sheet(data);
+      XLSX.utils.book_append_sheet(wb, ws, 'TCG');
+      XLSX.writeFile(wb, 'TCG_Collection.xlsx');
+      showToast('成功', 'Excel文件已导出');
+    } catch (err) {
+      showToast('错误', '导出失败：' + err.message, 'error');
+    }
+  }, 100);
+}
+
+// === Excel 导入 ===
+function importFromExcel() {
+  document.getElementById('fileInput').click();
+}
+
+function handleExcelFile(e) {
+  const f = e.target.files[0];
+  if (!f) return;
+  
+  showToast('导入中', '正在读取文件...', 'info');
+  
+  const r = new FileReader();
+  r.onload = function(ev) {
+    try {
+      const b = new Uint8Array(ev.target.result);
+      const wb = XLSX.read(b, { type: 'array' });
+      const arr = XLSX.utils.sheet_to_json(wb.Sheets.TCG);
+      
+      if (arr.length === 0) {
+        showToast('错误', '文件中没有找到数据', 'error');
+        return;
+      }
+      
+      const importedCards = arr.map(x => ({
+        name: x['名称'] || '',
+        no: x['编号'] || '',
+        cardType: x['类型'] || '裸卡',
+        language: x['语言'] || '中文',
+        source: x['来源'] || '',
+        sourceLink: x['来源链接'] || '',
+        purchaseTrackingNo: x['购入物流'] || '',
+        saleTrackingNo: x['出售物流'] || '',
+        markedForDelete: x['标记删除'] === '是' || false,
+        qty: parseInt(x['数量']) || 1,
+        purchasePrice: parseFloat(x['购入价']) || 0,
+        purchaseCurrency: x['购入币种'] || 'CNY',
+        marketPrice: parseFloat(x['市场价']) || 0,
+        marketCurrency: x['市场币种'] || 'CNY',
+        salePrice: parseFloat(x['出售价']) || 0,
+        saleCurrency: x['出售币种'] || 'CNY'
+      })).filter(c => c.name);
+      
+      if (importedCards.length === 0) {
+        showToast('错误', '没有找到有效的卡牌数据', 'error');
+        return;
+      }
+      
+      cards = importedCards;
+      save();
+      render();
+      updateDeletedCount();
+      showToast('成功', `成功导入 ${importedCards.length} 张卡牌`);
+    } catch (err) {
+      showToast('错误', '导入失败：' + err.message, 'error');
+    }
+    
+    e.target.value = '';
+  };
+  
+  r.onerror = function() {
+    showToast('错误', '文件读取失败', 'error');
+  };
+  
+  r.readAsArrayBuffer(f);
+}
+
+// === 工具函数 ===
+function showToast(title, message, type = 'success') {
+  if (!elements.toastTitle || !elements.toastMessage || !elements.toastIcon || !elements.toast) {
+    console.error('Toast elements not found');
+    return;
+  }
+  elements.toastTitle.textContent = title;
+  elements.toastMessage.textContent = message;
+  
+  const icons = {
+    success: 'fa-check-circle text-green-500',
+    error: 'fa-exclamation-circle text-red-500',
+    warning: 'fa-exclamation-triangle text-yellow-500',
+    info: 'fa-info-circle text-blue-500'
+  };
+  
+  elements.toastIcon.innerHTML = `<i class="fa ${icons[type]} text-xl"></i>`;
+  elements.toast.classList.add('show');
+  
+  setTimeout(() => {
+    if (elements.toast) {
+      elements.toast.classList.remove('show');
+    }
+  }, 3000);
+}
+
+function showModal(content, title = '操作') {
+  if (!elements.modalContent || !elements.modal) {
+    console.error('Modal elements not found');
+    return;
+  }
+  elements.modalContent.innerHTML = `
+    <div class="p-6">
+      <div class="flex justify-between items-center mb-4">
+        <h3 class="text-lg font-semibold">${title}</h3>
+        <button onclick="closeModal()" class="text-gray-500 hover:text-gray-700 dark:hover:text-gray-300">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+      <div>${content}</div>
+    </div>
+  `;
+  elements.modal.classList.add('active');
+}
+
+function closeModal() {
+  if (elements.modal) {
+    elements.modal.classList.remove('active');
+  }
+}
+
+function save() {
+  localStorage.setItem('tcgCards', JSON.stringify(cards));
+  addHistory('save', '保存数据', { cards: [...cards] });
+}
+
+function addHistory(action, details, data = {}) {
+  // 清除当前索引之后的历史记录
+  if (historyIndex < operationHistory.length - 1) {
+    operationHistory = operationHistory.slice(0, historyIndex + 1);
+  }
+  
+  operationHistory.push({
+    id: Date.now(),
+    action,
+    timestamp: new Date().toISOString(),
+    details,
+    data
+  });
+  
+  // 限制历史记录数量
+  if (operationHistory.length > 50) {
+    operationHistory.shift();
+  }
+  
+  historyIndex = operationHistory.length - 1;
+  localStorage.setItem('tcgHistory', JSON.stringify(operationHistory));
+}
+
+function generateId() {
+  return Date.now().toString(36) + Math.random().toString(36).substr(2);
+}
+
+// === 渲染卡牌列表 ===
+function render(data = null) {
+  const tbody = elements.body;
+  const emptyState = document.getElementById('emptyState');
+  if (!tbody) return;
+  tbody.innerHTML = '';
+  
+  // 默认只显示未标记删除的卡牌
+  const displayData = data || cards.filter(card => !card.markedForDelete);
+  
+  // 显示/隐藏空状态
+  if (displayData.length === 0) {
+    emptyState.classList.remove('hidden');
+    // 重置统计数据
+    elements.totalCount.textContent = '0';
+    elements.totalPrice.textContent = '0.00';
+    elements.avgPrice.textContent = '0';
+    elements.cardListCount.textContent = '(0)';
+    return;
+  } else {
+    emptyState.classList.add('hidden');
+  }
+  
+  let totalQty = 0;
+  let totalValue = 0;
+  
+  displayData.forEach((card, displayIndex) => {
+    // 获取在原始cards数组中的真实索引
+    const originalIndex = cards.indexOf(card);
+    
+    totalQty += parseInt(card.qty) || 0;
+    totalValue += (parseFloat(card.purchasePrice) || 0) * (parseInt(card.qty) || 0);
+    
+    const tr = document.createElement('tr');
+    // 斑马纹效果
+    const isEven = displayIndex % 2 === 0;
+    tr.className = `${isEven ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-700/30'} hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group`;
+    const cardTypeClass = card.cardType === '评级卡' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white';
+    
+    // 计算各价格（按当前汇率换算）
+    const purchasePriceConverted = ((card.purchasePrice || 0) * getRate(card.purchaseCurrency)).toFixed(0);
+    const marketPriceConverted = ((card.marketPrice || 0) * getRate(card.marketCurrency)).toFixed(0);
+    const salePriceConverted = ((card.salePrice || 0) * getRate(card.saleCurrency)).toFixed(0);
+    
+    tr.innerHTML = `
+      <td class="px-2 py-1.5">
+        <input type="checkbox" class="card-checkbox rounded text-primary focus:ring-primary cursor-pointer w-3.5 h-3.5" data-id="${originalIndex}" data-tooltip="勾选此卡牌进行批量操作，如批量删除。">
+      </td>
+      <td class="px-2 py-1.5">
+        <div class="flex items-center gap-2">
+          ${card.image ? `<img src="${card.image}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图">` : '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>'}
+          <span class="font-medium text-xs truncate max-w-[100px]" title="${card.name || '-'}">${card.name || '-'}</span>
+        </div>
+      </td>
+      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.series || '-'}</td>
+      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.no || '-'}</td>
+      <td class="px-2 py-1.5">
+        <span class="px-1.5 py-0.5 rounded text-[9px] font-medium ${cardTypeClass}">${card.cardType || '裸卡'}</span>
+      </td>
+      <td class="px-2 py-1.5">
+        <div class="flex flex-wrap gap-0.5">
+          ${card.groups && card.groups.length > 0 ? card.groups.slice(0, 2).map(group => `<span class="px-1 py-0.5 rounded text-[9px] font-medium bg-purple-100 text-purple-700 dark:bg-purple-900/50 dark:text-purple-300">${group}</span>`).join('') + (card.groups.length > 2 ? `<span class="px-1 py-0.5 rounded text-[9px] font-medium bg-gray-100 text-gray-500">+${card.groups.length - 2}</span>` : '') : '<span class="text-gray-300 text-[10px]">-</span>'}
+        </div>
+      </td>
+      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.language || '-'}</td>
+      <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.source || '-'}</td>
+      <td class="px-2 py-1.5 text-center">
+        <button onclick="toggleDeleteMark(${originalIndex})" class="${card.markedForDelete ? 'text-red-500' : 'text-gray-300'} hover:text-red-500 transition-colors" data-tooltip="标记此卡牌为待删除状态，方便后续批量处理。再次点击可取消标记。">
+          <i class="fa ${card.markedForDelete ? 'fa-flag' : 'fa-flag-o'} text-[10px]"></i>
+        </button>
+      </td>
+      <td class="px-2 py-1.5 text-[11px] text-right font-medium">${card.qty || 0}</td>
+      <td class="px-2 py-1.5 text-[10px] text-right font-medium text-emerald-600 dark:text-emerald-400">${purchasePriceConverted}</td>
+      <td class="px-2 py-1.5 text-[10px] text-right font-medium text-blue-600 dark:text-blue-400">${marketPriceConverted}</td>
+      <td class="px-2 py-1.5 text-[10px] text-right font-medium text-purple-600 dark:text-purple-400">${salePriceConverted}</td>
+      <td class="px-2 py-1.5">
+        <div class="flex justify-center gap-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
+          <button onclick="editCard(${originalIndex})" class="text-blue-500 hover:text-blue-600 hover:bg-blue-50 dark:hover:bg-blue-900/20 p-1 rounded transition-colors" data-tooltip="编辑此卡牌的详细信息，如价格、数量、图片等。">
+            <i class="fa fa-pencil text-[10px]"></i>
+          </button>
+          <button onclick="deleteCard(${originalIndex})" class="text-red-500 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-900/20 p-1 rounded transition-colors" data-tooltip="删除此卡牌。删除后可在"已删"中恢复或彻底删除。">
+            <i class="fa fa-trash text-[10px]"></i>
+          </button>
+        </div>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+  
+  // 更新统计
+  elements.totalCount.textContent = totalQty;
+  const convertedTotal = totalValue * rate[currency];
+  elements.totalPrice.textContent = convertedTotal.toFixed(2);
+  elements.cardListCount.textContent = `(${displayData.length})`;
+  elements.curLabel.textContent = currencySymbols[currency];
+  
+  // 更新已删除卡牌数量
+  updateDeletedCount();
+  
+  // 更新汇率显示
+  const exchangeRateEl = document.getElementById('exchangeRate');
+  const rateUpdateTimeEl = document.getElementById('rateUpdateTime');
+  if (exchangeRateEl && rateUpdateTimeEl) {
+    if (currency === 'CNY') {
+      exchangeRateEl.textContent = `1 CNY = 1 CNY`;
+      rateUpdateTimeEl.textContent = '基准货币：人民币';
+    } else {
+      exchangeRateEl.textContent = `1 CNY = ${rate[currency].toFixed(3)} ${currency}`;
+      rateUpdateTimeEl.textContent = `当前货币：${currency} | 符号：${currencySymbols[currency]}`;
+    }
+  }
+  
+  // 绑定复选框事件
+  document.querySelectorAll('.card-checkbox').forEach(cb => {
+    cb.onchange = function() {
+      const id = parseInt(this.dataset.id);
+      if (this.checked) {
+        selectedCards.add(id);
+      } else {
+        selectedCards.delete(id);
+      }
+    };
+  });
+}
+
+// === 编辑卡牌 ===
+function editCard(index) {
+  const card = cards[index];
+  
+  // 如果被标记为待删除，需要二次确认
+  if (card.markedForDelete) {
+    if (!confirm('【二次确认】该卡牌已标记为待删除，确定要编辑吗？')) {
+      return;
+    }
+  }
+  
+  currentCard = index;
+  editingCardIndex = index; // 保存编辑索引，用于查价后恢复
+  
+  // 设置当前图片
+  currentImageBase64 = card.image || null;
+  
+  const content = `
+    <form id="cardForm" class="space-y-3">
+      <!-- 卡牌名称 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">卡牌名称</label>
+        <input type="text" id="cardName" value="${card.name || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" required>
+      </div>
+      
+      <!-- 分类 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">分类</label>
+          <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+            ${generateCategoryOptions(card.category)}
+          </select>
+          <input type="text" id="cardCategoryCustom" value="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(card.category) ? card.category : ''}" class="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(card.category) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入自定义分类">
+        </div>
+      </div>
+      
+      <!-- 系列和编号 -->
+      <div class="grid grid-cols-2 gap-3">
+        <div class="relative">
+          <label class="block text-sm font-medium mb-1">系列</label>
+          <input type="text" id="cardSeries" value="${card.series || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：LOB" onfocus="showSeriesDropdown()" oninput="filterSeriesDropdown(this.value)">
+          <div id="seriesDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">编号</label>
+          <input type="text" id="cardNo" value="${card.no || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：001">
+        </div>
+      </div>
+      
+      <!-- 语言、库存、卡类型 -->
+      <div class="grid grid-cols-3 gap-3">
+        <div>
+          <label class="block text-sm font-medium mb-1">语言</label>
+          <select id="cardLanguage" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+            <option value="中文" ${card.language === '中文' ? 'selected' : ''}>中文</option>
+            <option value="日文" ${card.language === '日文' ? 'selected' : ''}>日文</option>
+            <option value="英文" ${card.language === '英文' ? 'selected' : ''}>英文</option>
+            <option value="韩文" ${card.language === '韩文' ? 'selected' : ''}>韩文</option>
+          </select>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">库存 <span class="text-xs text-gray-400">(自动)</span></label>
+          <input type="number" id="cardQty" value="${card.qty || 0}" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">卡类型</label>
+          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+            <option value="裸卡" ${card.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
+            <option value="评级卡" ${card.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+          </select>
+        </div>
+      </div>
+      
+      <!-- 来源信息（左：购入相关，右：出售相关） -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入信息</div>
+          <div class="relative">
+            <label class="block text-sm font-medium mb-1">来源</label>
+            <input type="text" id="cardSource" value="${card.source || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：淘宝" onfocus="showSourceDropdown()" oninput="filterSourceDropdown(this.value)">
+            <div id="sourceDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">来源链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSourceLink" value="${card.sourceLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardPurchaseTrackingNo" value="${card.purchaseTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：SF123456789">
+          </div>
+        </div>
+        <!-- 右列：出售 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售信息</div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售</label>
+            <input type="text" id="cardSaleSource" value="${card.saleSource || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：闲鱼">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售链接 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="url" id="cardSaleLink" value="${card.saleLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="https://...">
+          </div>
+          <div>
+            <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
+            <input type="text" id="cardSaleTrackingNo" value="${card.saleTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：SF987654321">
+          </div>
+        </div>
+      </div>
+      
+      <!-- 价格信息（左：购入价格，右：出售价格） -->
+      <div class="grid grid-cols-2 gap-3">
+        <!-- 左列：购入价格 -->
+        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
+          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入价格</div>
+          <!-- 购入数量 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入数量</label>
+            <input type="number" id="cardPurchaseQty" value="${card.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <!-- 购入价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardPurchasePrice" value="${card.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
+              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+                <option value="CNY" ${card.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${card.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${card.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${card.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${card.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${card.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${card.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 市场价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">市场价 <span class="text-xs text-gray-400">(参考)</span></label>
+            <div class="flex gap-1">
+              <input type="number" id="cardMarketPrice" value="${card.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="updatePricePreview('market')">
+              <select id="cardMarketCurrency" onchange="updatePricePreview('market')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+                <option value="CNY" ${card.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${card.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${card.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${card.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${card.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${card.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${card.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 查价按钮 -->
+          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2" title="查价">
+            <i class="fa fa-search"></i> 查价
+          </button>
+        </div>
+        
+        <!-- 右列：出售价格 -->
+        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
+          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售价格</div>
+          <!-- 出售数量 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售数量</label>
+            <input type="number" id="cardSaleQty" value="${card.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0" oninput="updateStock()">
+          </div>
+          <!-- 出售价 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售价</label>
+            <div class="flex gap-1">
+              <input type="number" id="cardSalePrice" value="${card.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
+              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+                <option value="CNY" ${card.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${card.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${card.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${card.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${card.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${card.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${card.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+              </select>
+            </div>
+          </div>
+          <!-- 利润 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">利润 <span class="text-xs text-gray-400">(自动)</span></label>
+            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
+              自动计算
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 图片上传 -->
+      <div>
+        <label class="block text-sm font-medium mb-1">卡牌照片</label>
+        <div class="flex items-start gap-3">
+          <div id="imagePreview" class="w-24 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800 overflow-hidden">
+            ${card.image ? `<img src="${card.image}" class="w-full h-full object-cover" alt="卡牌照片">` : '<i class="fa fa-image text-gray-400 text-2xl"></i>'}
+          </div>
+          <div class="flex-1 flex flex-col gap-2">
+            <input type="file" id="cardImage" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
+            <button type="button" onclick="document.getElementById('cardImage').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-upload mr-1"></i>${card.image ? '更换' : '选择'}
+            </button>
+            <button type="button" onclick="clearImage()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-trash mr-1"></i>清除
+            </button>
+          </div>
+        </div>
+      </div>
+      
+      <!-- 按钮 -->
+      <div class="flex gap-3 pt-2">
+        <button type="submit" class="flex-1 bg-primary text-white py-2 rounded-lg hover:bg-primary/90">保存</button>
+        <button type="button" onclick="closeModal()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500">取消</button>
+      </div>
+    </form>
+  `;
+  
+  showModal(content, '编辑卡牌');
+  
+  document.getElementById('cardForm').onsubmit = function(e) {
+    e.preventDefault();
+    
+    const typeSelect = document.getElementById('cardType');
+    const typeValue = typeSelect.value === 'other' 
+      ? document.getElementById('cardTypeCustom').value.trim() 
+      : typeSelect.value;
+    
+    const categorySelect = document.getElementById('cardCategory');
+    const categoryValue = categorySelect.value === 'other' 
+      ? document.getElementById('cardCategoryCustom').value.trim() 
+      : categorySelect.value;
+    
+    // 保存分类历史记录
+    if (categoryValue && categoryValue !== '其他') {
+      saveCategoryHistory(categoryValue);
+    }
+    
+    // 保存系列历史记录
+    const seriesValue = document.getElementById('cardSeries').value.trim();
+    if (seriesValue) {
+      saveSeriesHistory(seriesValue);
+    }
+    
+    // 保存来源历史记录
+    const sourceValue = document.getElementById('cardSource').value.trim();
+    if (sourceValue) {
+      saveSourceHistory(sourceValue);
+    }
+    
+    // 获取价格信息
+    const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
+    const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
+    const marketPrice = parseFloat(document.getElementById('cardMarketPrice').value) || 0;
+    const marketCurrency = document.getElementById('cardMarketCurrency').value;
+    const salePrice = parseFloat(document.getElementById('cardSalePrice').value) || 0;
+    const saleCurrency = document.getElementById('cardSaleCurrency').value;
+    
+    cards[index] = {
+      name: document.getElementById('cardName').value,
+      category: categoryValue || '其他',
+      series: seriesValue,
+      no: document.getElementById('cardNo').value,
+      cardType: typeValue || '其他',
+      language: document.getElementById('cardLanguage').value,
+      source: sourceValue,
+      sourceLink: document.getElementById('cardSourceLink').value.trim(),
+      saleSource: document.getElementById('cardSaleSource').value.trim(),
+      saleLink: document.getElementById('cardSaleLink').value.trim(),
+      purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
+      saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
+      markedForDelete: cards[index].markedForDelete,
+      image: currentImageBase64,
+      qty: parseInt(document.getElementById('cardQty').value) || 1,
+      purchasePrice: purchasePrice,
+      purchaseCurrency: purchaseCurrency,
+      marketPrice: marketPrice,
+      marketCurrency: marketCurrency,
+      salePrice: salePrice,
+      saleCurrency: saleCurrency
+    };
+    save();
+    render();
+    closeModal();
+    currentImageBase64 = null;
+    showToast('成功', '卡牌已更新');
+  };
+}
+
+// === 切换删除标记 ===
+function toggleDeleteMark(index) {
+  cards[index].markedForDelete = !cards[index].markedForDelete;
+  save();
+  render();
+  showToast(cards[index].markedForDelete ? '标记' : '取消标记', cards[index].markedForDelete ? '卡牌已标记为待删除' : '已取消删除标记', cards[index].markedForDelete ? 'warning' : 'info');
+}
+
+// === 删除卡牌 ===
+function deleteCard(index) {
+  const card = cards[index];
+  
+  if (card.markedForDelete) {
+    // 如果已经标记为删除，则彻底删除
+    if (confirm('【二次确认】该卡牌已标记为待删除，确定要永久删除吗？')) {
+      cards.splice(index, 1);
+      save();
+      render();
+      showToast('成功', '卡牌已彻底删除');
+    }
+  } else {
+    // 首次删除，标记为删除状态
+    if (confirm('确定要删除这张卡牌吗？删除后可在"已删"中查看和恢复。')) {
+      cards[index].markedForDelete = true;
+      save();
+      render();
+      showToast('成功', '卡牌已删除，可在"已删"中查看');
+    }
+  }
+}
+
+// === 加载示例数据 ===
+function loadSampleData() {
+  const sampleCards = [
+    { 
+      id: Date.now() + 1,
+      name: '青眼白龙', 
+      category: '游戏王', 
+      series: 'LOB', 
+      no: '001', 
+      cardType: '评级卡', 
+      language: '日文', 
+      source: '淘宝',
+      sourceLink: 'https://item.taobao.com/item.htm?id=123456',
+      purchaseTrackingNo: 'SF123456789',
+      saleSource: '闲鱼',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 3,
+      purchasePrice: 150.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 200.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 280.00,
+      saleCurrency: 'CNY',
+      qty: 3,
+      groups: ['高价值卡牌']
+    },
+    { 
+      id: Date.now() + 2,
+      name: '黑魔导', 
+      category: '游戏王', 
+      series: 'LOB', 
+      no: '005', 
+      cardType: '裸卡', 
+      language: '日文', 
+      source: '闲鱼',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 2,
+      purchasePrice: 120.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 150.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 180.00,
+      saleCurrency: 'CNY',
+      qty: 2,
+      groups: []
+    },
+    { 
+      id: Date.now() + 3,
+      name: '红眼黑龙', 
+      category: '游戏王', 
+      series: 'LOB', 
+      no: '070', 
+      cardType: '裸卡', 
+      language: '中文', 
+      source: '卡店',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '闲鱼',
+      saleLink: 'https://www.xianyu.com/item/abc123',
+      saleTrackingNo: 'SF987654321',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 5,
+      purchasePrice: 45.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 60.00,
+      marketCurrency: 'CNY',
+      saleQty: 2,
+      salePrice: 80.00,
+      saleCurrency: 'CNY',
+      qty: 3,
+      groups: ['在售中']
+    },
+    { 
+      id: Date.now() + 4,
+      name: '皮卡丘', 
+      category: '宝可梦', 
+      series: 'BS', 
+      no: '001', 
+      cardType: '评级卡', 
+      language: '英文', 
+      source: '淘宝',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 10,
+      purchasePrice: 25.00,
+      purchaseCurrency: 'USD',
+      marketPrice: 30.00,
+      marketCurrency: 'USD',
+      saleQty: 0,
+      salePrice: 35.00,
+      saleCurrency: 'USD',
+      qty: 10,
+      groups: ['宝可梦收藏']
+    },
+    { 
+      id: Date.now() + 5,
+      name: '喷火龙', 
+      category: '宝可梦', 
+      series: 'BS', 
+      no: '002', 
+      cardType: '评级卡', 
+      language: '韩文', 
+      source: '卡店',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 2,
+      purchasePrice: 200.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 250.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 300.00,
+      saleCurrency: 'CNY',
+      qty: 2,
+      groups: ['宝可梦收藏', '高价值卡牌']
+    },
+    { 
+      id: Date.now() + 6,
+      name: '超梦', 
+      category: '宝可梦', 
+      series: 'BS', 
+      no: '010', 
+      cardType: '裸卡', 
+      language: '中文', 
+      source: '闲鱼',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 3,
+      purchasePrice: 80.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 100.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 120.00,
+      saleCurrency: 'CNY',
+      qty: 3,
+      groups: []
+    },
+    { 
+      id: Date.now() + 7,
+      name: '杰尼龟', 
+      category: '宝可梦', 
+      series: 'BS', 
+      no: '015', 
+      cardType: '裸卡', 
+      language: '中文', 
+      source: '淘宝',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 8,
+      purchasePrice: 15.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 20.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 25.00,
+      saleCurrency: 'CNY',
+      qty: 8,
+      groups: []
+    },
+    { 
+      id: Date.now() + 8,
+      name: '黑暗大法师', 
+      category: '游戏王', 
+      series: 'LOB', 
+      no: '100', 
+      cardType: '评级卡', 
+      language: '日文', 
+      source: '卡店',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 1,
+      purchasePrice: 500.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 600.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 750.00,
+      saleCurrency: 'CNY',
+      qty: 1,
+      groups: ['高价值卡牌', '珍藏']
+    },
+    { 
+      id: Date.now() + 9,
+      name: '真红眼黑龙', 
+      category: '游戏王', 
+      series: 'LOB', 
+      no: '071', 
+      cardType: '裸卡', 
+      language: '中文', 
+      source: '淘宝',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 4,
+      purchasePrice: 35.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 45.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 55.00,
+      saleCurrency: 'CNY',
+      qty: 4,
+      groups: []
+    },
+    { 
+      id: Date.now() + 10,
+      name: '妙蛙种子', 
+      category: '宝可梦', 
+      series: 'BS', 
+      no: '020', 
+      cardType: '裸卡', 
+      language: '中文', 
+      source: '闲鱼',
+      sourceLink: '',
+      purchaseTrackingNo: '',
+      saleSource: '',
+      saleLink: '',
+      saleTrackingNo: '',
+      markedForDelete: false, 
+      image: null, 
+      purchaseQty: 15,
+      purchasePrice: 5.00,
+      purchaseCurrency: 'CNY',
+      marketPrice: 8.00,
+      marketCurrency: 'CNY',
+      saleQty: 0,
+      salePrice: 10.00,
+      saleCurrency: 'CNY',
+      qty: 15,
+      groups: []
+    }
+  ];
+  
+  cards = sampleCards;
+  save();
+  render();
+  updateDeletedCount();
+  showToast('成功', '已加载10张示例卡牌');
+}
+
+// === 立即初始化 ===
+// 由于脚本在body末尾，DOM已经加载完成
+initApp();
+
+// 启动宠物金句轮播
+startPetQuoteRotation();
+
+// 检查并应用保存的自定义背景
+const savedBackground = localStorage.getItem('tcgCustomBackground');
+if (savedBackground) {
+  applyCustomBackground(savedBackground);
+}
+
+// === 空闲检测与虚化效果 ===
+(function initIdleBlur() {
+  let idleTimer = null;
+  const IDLE_TIMEOUT = 30000; // 30秒
+  
+  // 获取所有需要虚化的元素
+  function getBlurElements() {
+    return [
+      document.querySelector('header'),
+      document.querySelector('.main-content'),
+      document.querySelector('.desktop-sidebar'),
+      document.querySelector('nav.mobile-nav'),
+      document.querySelector('.card-list-area')
+    ].filter(el => el !== null);
+  }
+  
+  function resetIdleTimer() {
+    // 清除之前的定时器
+    if (idleTimer) {
+      clearTimeout(idleTimer);
+    }
+    
+    // 移除虚化效果
+    const elements = getBlurElements();
+    elements.forEach(el => {
+      el.style.filter = 'none';
+      el.style.opacity = '1';
+      el.style.transition = 'filter 0.8s ease, opacity 0.8s ease';
+    });
+    
+    // 设置新的定时器
+    idleTimer = setTimeout(() => {
+      // 只有在有自定义背景时才虚化
+      if (localStorage.getItem('tcgCustomBackground')) {
+        const elements = getBlurElements();
+        elements.forEach(el => {
+          el.style.filter = 'blur(12px) brightness(0.6)';
+          el.style.opacity = '0.5';
+        });
+      }
+    }, IDLE_TIMEOUT);
+  }
+  
+  // 监听用户交互事件
+  const events = ['mousedown', 'mousemove', 'keypress', 'scroll', 'touchstart', 'click'];
+  events.forEach(event => {
+    document.addEventListener(event, resetIdleTimer, true);
+  });
+  
+  // 初始化
+  resetIdleTimer();
+})();
+
+// === 全局Tooltip提示系统 ===
+(function initTooltipSystem() {
+  // 创建tooltip元素
+  const tooltip = document.createElement('div');
+  tooltip.id = 'global-tooltip';
+  tooltip.className = 'fixed z-[9999] px-3 py-2 bg-gray-900 dark:bg-gray-800 text-white text-xs rounded-lg shadow-lg opacity-0 pointer-events-none transition-opacity duration-200 max-w-xs whitespace-pre-wrap';
+  tooltip.style.cssText = 'top: 0; left: 0;';
+  document.body.appendChild(tooltip);
+
+  let tooltipTimer = null;
+  let currentTarget = null;
+
+  // 显示tooltip
+  function showTooltip(target, content) {
+    if (!content) return;
+    
+    tooltip.textContent = content;
+    tooltip.style.opacity = '1';
+    
+    // 计算位置
+    const rect = target.getBoundingClientRect();
+    const tooltipRect = tooltip.getBoundingClientRect();
+    
+    let top = rect.bottom + 8;
+    let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+    
+    // 边界检查
+    if (left < 8) left = 8;
+    if (left + tooltipRect.width > window.innerWidth - 8) {
+      left = window.innerWidth - tooltipRect.width - 8;
+    }
+    if (top + tooltipRect.height > window.innerHeight - 8) {
+      top = rect.top - tooltipRect.height - 8;
+    }
+    
+    tooltip.style.top = top + 'px';
+    tooltip.style.left = left + 'px';
+  }
+
+  // 隐藏tooltip
+  function hideTooltip() {
+    tooltip.style.opacity = '0';
+    currentTarget = null;
+    if (tooltipTimer) {
+      clearTimeout(tooltipTimer);
+      tooltipTimer = null;
+    }
+  }
+
+  // 使用事件委托监听鼠标事件
+  document.addEventListener('mouseover', function(e) {
+    const target = e.target.closest('[data-tooltip]');
+    if (!target || target === currentTarget) return;
+    
+    currentTarget = target;
+    const content = target.getAttribute('data-tooltip');
+    
+    tooltipTimer = setTimeout(() => {
+      if (currentTarget === target) {
+        showTooltip(target, content);
+      }
+    }, 3000); // 3秒后显示
+  });
+
+  document.addEventListener('mouseout', function(e) {
+    const target = e.target.closest('[data-tooltip]');
+    if (!target) return;
+    
+    const relatedTarget = e.relatedTarget;
+    if (!relatedTarget || !relatedTarget.closest('[data-tooltip]') || relatedTarget.closest('[data-tooltip]') !== target) {
+      hideTooltip();
+    }
+  });
+
+  // 鼠标移动时更新tooltip位置
+  document.addEventListener('mousemove', function(e) {
+    if (tooltip.style.opacity === '1' && currentTarget) {
+      const rect = currentTarget.getBoundingClientRect();
+      const tooltipRect = tooltip.getBoundingClientRect();
+      
+      let top = rect.bottom + 8;
+      let left = rect.left + (rect.width / 2) - (tooltipRect.width / 2);
+      
+      if (left < 8) left = 8;
+      if (left + tooltipRect.width > window.innerWidth - 8) {
+        left = window.innerWidth - tooltipRect.width - 8;
+      }
+      if (top + tooltipRect.height > window.innerHeight - 8) {
+        top = rect.top - tooltipRect.height - 8;
+      }
+      
+      tooltip.style.top = top + 'px';
+      tooltip.style.left = left + 'px';
+    }
+  });
+
+  // 点击时隐藏tooltip
+  document.addEventListener('click', hideTooltip);
+})();
+</script>
+
+</body>
+</html>

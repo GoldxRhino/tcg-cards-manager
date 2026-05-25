@@ -476,11 +476,28 @@
           <!-- 互动宠物 - 海贼王金句 -->
           <div class="mt-4 flex justify-center items-center gap-3">
             <div id="onePiecePet" class="relative cursor-pointer group" onmouseenter="petInteract()" onclick="petClick()">
-              <!-- 宠物形象 -->
+              <!-- 宠物形象 - CSS绘制前进梅利号 -->
               <div class="w-20 h-20 relative animate-bounce-slow transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1">
-                <img src="ScreenShot_2026-05-25_092024_557.png" 
-                     alt="宠物" 
-                     class="w-full h-full object-contain drop-shadow-lg">
+                <!-- 羊头主体 -->
+                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-12 bg-white rounded-full shadow-lg border-2 border-gray-100"></div>
+                <!-- 左耳/角 -->
+                <div class="absolute top-0 left-2 w-6 h-7 bg-[#8B7355] rounded-full rotate-[-25deg] origin-bottom-right"></div>
+                <!-- 右耳/角 -->
+                <div class="absolute top-0 right-2 w-6 h-7 bg-[#8B7355] rounded-full rotate-[25deg] origin-bottom-left"></div>
+                <!-- 眼睛 -->
+                <div class="absolute top-4 left-4 w-3.5 h-4.5 bg-black rounded-full">
+                  <div class="absolute top-1 right-1 w-1.5 h-2 bg-white rounded-full"></div>
+                </div>
+                <!-- 鼻子嘴巴区域 -->
+                <div class="absolute top-7 left-1/2 -translate-x-1/2 w-10 h-6">
+                  <!-- 鼻孔 -->
+                  <div class="absolute top-0 left-2.5 w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <div class="absolute top-0 right-2.5 w-1 h-1 bg-gray-400 rounded-full"></div>
+                  <!-- 微笑嘴巴 -->
+                  <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-5 h-2.5 border-b-2 border-gray-600 rounded-full"></div>
+                </div>
+                <!-- 脖子 -->
+                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-5 bg-gray-300 rounded-b-xl"></div>
               </div>
               
               <!-- 金句气泡 -->

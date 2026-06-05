@@ -547,7 +547,7 @@
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider">名称</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">系列</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">编号</th>
-                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">类型</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">评级机构</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">分组</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">语言</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">来源</th>
@@ -999,6 +999,7 @@ function openAddCardModal() {
             <option value="other">其他</option>
           </select>
           <input type="text" id="cardTypeCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义类型">
+          <p id="gradingPrompt" class="hidden mt-1 text-xs text-amber-500"><i class="fa fa-exclamation-circle"></i> 请选择评级机构</p>
         </div>
       </div>
       
@@ -1031,11 +1032,17 @@ function openAddCardModal() {
           <input type="number" id="cardQty" value="0" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">卡类型</label>
-          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-            <option value="裸卡">裸卡</option>
-            <option value="评级卡">评级卡</option>
+          <label class="block text-sm font-medium mb-1">评级机构</label>
+          <select id="gradingOrg" onchange="handleGradingOrgChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="">无</option>
+            <option value="PSA">PSA</option>
+            <option value="CGC">CGC</option>
+            <option value="BGS">BGS</option>
+            <option value="SGC">SGC</option>
+            <option value="ARS">ARS</option>
+            <option value="other">其他</option>
           </select>
+          <input type="text" id="gradingOrgCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他评级机构">
         </div>
       </div>
       
@@ -1228,6 +1235,12 @@ function openAddCardModal() {
       saveSeriesHistory(seriesValue);
     }
     
+    // 获取评级机构
+    const gradingOrgSelect = document.getElementById('gradingOrg');
+    const gradingOrgValue = gradingOrgSelect.value === 'other' 
+      ? document.getElementById('gradingOrgCustom').value.trim() 
+      : gradingOrgSelect.value;
+    
     // 获取价格信息
     const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
     const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
@@ -1242,6 +1255,7 @@ function openAddCardModal() {
       series: seriesValue,
       no: document.getElementById('cardNo').value.trim(),
       cardType: typeValue || '其他',
+      gradingOrg: gradingOrgValue,
       language: document.getElementById('cardLanguage').value,
       source: sourceValue,
       sourceLink: document.getElementById('cardSourceLink').value.trim(),
@@ -2135,7 +2149,7 @@ function showStats() {
   let totalValue = 0;
   
   cards.forEach(card => {
-    const type = card.cardType || '裸卡';
+    const type = card.gradingOrg || '无评级';
     cardTypeCount[type] = (cardTypeCount[type] || 0) + (parseInt(card.qty) || 0);
     totalValue += (parseFloat(card.price) || 0) * (parseInt(card.qty) || 0);
   });
@@ -2154,11 +2168,11 @@ function showStats() {
       </div>
       
       <div>
-        <h4 class="font-medium mb-3">卡类型分布</h4>
+        <h4 class="font-medium mb-3">评级机构分布</h4>
         <div class="space-y-2">
           ${Object.entries(cardTypeCount).map(([type, count]) => `
             <div class="flex justify-between items-center">
-              <span class="px-2 py-1 rounded text-xs ${type === '评级卡' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}">${type}</span>
+              <span class="px-2 py-1 rounded text-xs ${type !== '无评级' ? 'bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200' : 'bg-gray-100 text-gray-800 dark:bg-gray-700 dark:text-gray-300'}">${type}</span>
               <span class="font-medium">${count} 张</span>
             </div>
           `).join('')}
@@ -2823,11 +2837,17 @@ function restoreAddForm(cardData) {
           <input type="number" id="cardQty" value="${cardData.qty || 0}" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm cursor-not-allowed">
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">卡类型</label>
-          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-            <option value="裸卡" ${cardData.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
-            <option value="评级卡" ${cardData.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+          <label class="block text-sm font-medium mb-1">评级机构</label>
+          <select id="gradingOrg" onchange="handleGradingOrgChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="" ${!cardData.gradingOrg ? 'selected' : ''}>无</option>
+            <option value="PSA" ${cardData.gradingOrg === 'PSA' ? 'selected' : ''}>PSA</option>
+            <option value="CGC" ${cardData.gradingOrg === 'CGC' ? 'selected' : ''}>CGC</option>
+            <option value="BGS" ${cardData.gradingOrg === 'BGS' ? 'selected' : ''}>BGS</option>
+            <option value="SGC" ${cardData.gradingOrg === 'SGC' ? 'selected' : ''}>SGC</option>
+            <option value="ARS" ${cardData.gradingOrg === 'ARS' ? 'selected' : ''}>ARS</option>
+            <option value="other" ${cardData.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(cardData.gradingOrg) ? 'selected' : ''}>其他</option>
           </select>
+          <input type="text" id="gradingOrgCustom" value="${cardData.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(cardData.gradingOrg) ? cardData.gradingOrg : ''}" class="${cardData.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(cardData.gradingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他评级机构">
         </div>
       </div>
       
@@ -3015,6 +3035,12 @@ function restoreAddForm(cardData) {
       saveSourceHistory(sourceValue);
     }
     
+    // 获取评级机构
+    const gradingOrgSelect = document.getElementById('gradingOrg');
+    const gradingOrgValue = gradingOrgSelect.value === 'other' 
+      ? document.getElementById('gradingOrgCustom').value.trim() 
+      : gradingOrgSelect.value;
+    
     const newCard = {
       id: Date.now(),
       name: document.getElementById('cardName').value.trim(),
@@ -3032,6 +3058,7 @@ function restoreAddForm(cardData) {
       qty: parseInt(document.getElementById('cardQty').value) || 0,
       language: document.getElementById('cardLanguage').value,
       cardType: typeValue,
+      gradingOrg: gradingOrgValue,
       source: sourceValue,
       sourceLink: document.getElementById('cardSourceLink').value.trim(),
       purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
@@ -3106,6 +3133,27 @@ function clearImage() {
 // === 处理类型选择变化 ===
 function handleTypeChange(select) {
   const customInput = document.getElementById('cardTypeCustom');
+  const gradingPrompt = document.getElementById('gradingPrompt');
+  
+  if (select.value === 'other') {
+    customInput.classList.remove('hidden');
+    customInput.focus();
+  } else {
+    customInput.classList.add('hidden');
+    customInput.value = '';
+  }
+  
+  // 评级卡提示
+  if (select.value === '评级卡') {
+    if (gradingPrompt) gradingPrompt.classList.remove('hidden');
+  } else {
+    if (gradingPrompt) gradingPrompt.classList.add('hidden');
+  }
+}
+
+// === 处理评级机构选择变化 ===
+function handleGradingOrgChange(select) {
+  const customInput = document.getElementById('gradingOrgCustom');
   if (select.value === 'other') {
     customInput.classList.remove('hidden');
     customInput.focus();
@@ -3181,8 +3229,8 @@ function exportToExcel() {
   
   setTimeout(() => {
     try {
-      const data = [['名称', '编号', '类型', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种']];
-      cards.forEach(c => data.push([c.name, c.no, c.cardType || '裸卡', c.language || '中文', c.source || '', c.sourceLink || '', c.purchaseTrackingNo || '', c.saleTrackingNo || '', c.markedForDelete ? '是' : '否', c.qty, c.purchasePrice || 0, c.purchaseCurrency || 'CNY', c.marketPrice || 0, c.marketCurrency || 'CNY', c.salePrice || 0, c.saleCurrency || 'CNY']));
+      const data = [['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种']];
+      cards.forEach(c => data.push([c.name, c.no, c.cardType || '裸卡', c.gradingOrg || '', c.language || '中文', c.source || '', c.sourceLink || '', c.purchaseTrackingNo || '', c.saleTrackingNo || '', c.markedForDelete ? '是' : '否', c.qty, c.purchasePrice || 0, c.purchaseCurrency || 'CNY', c.marketPrice || 0, c.marketCurrency || 'CNY', c.salePrice || 0, c.saleCurrency || 'CNY']));
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(data);
       XLSX.utils.book_append_sheet(wb, ws, 'TCG');
@@ -3221,6 +3269,7 @@ function handleExcelFile(e) {
         name: x['名称'] || '',
         no: x['编号'] || '',
         cardType: x['类型'] || '裸卡',
+        gradingOrg: x['评级机构'] || '',
         language: x['语言'] || '中文',
         source: x['来源'] || '',
         sourceLink: x['来源链接'] || '',
@@ -3380,7 +3429,7 @@ function render(data = null) {
     // 斑马纹效果
     const isEven = displayIndex % 2 === 0;
     tr.className = `${isEven ? 'bg-white dark:bg-gray-800' : 'bg-gray-50/50 dark:bg-gray-700/30'} hover:bg-blue-50/50 dark:hover:bg-blue-900/10 transition-colors group`;
-    const cardTypeClass = card.cardType === '评级卡' ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white';
+    const cardTypeClass = card.gradingOrg ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white';
     
     // 计算各价格（按当前汇率换算）
     const purchasePriceConverted = ((card.purchasePrice || 0) * getRate(card.purchaseCurrency)).toFixed(0);
@@ -3400,7 +3449,7 @@ function render(data = null) {
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.series || '-'}</td>
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.no || '-'}</td>
       <td class="px-2 py-1.5">
-        <span class="px-1.5 py-0.5 rounded text-[9px] font-medium ${cardTypeClass}">${card.cardType || '裸卡'}</span>
+        <span class="px-1.5 py-0.5 rounded text-[9px] font-medium ${cardTypeClass}">${card.gradingOrg || '无'}</span>
       </td>
       <td class="px-2 py-1.5">
         <div class="flex flex-wrap gap-0.5">
@@ -3533,11 +3582,17 @@ function editCard(index) {
           <input type="number" id="cardQty" value="${card.qty || 0}" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
         </div>
         <div>
-          <label class="block text-sm font-medium mb-1">卡类型</label>
-          <select id="cardType" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-            <option value="裸卡" ${card.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
-            <option value="评级卡" ${card.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+          <label class="block text-sm font-medium mb-1">评级机构</label>
+          <select id="gradingOrg" onchange="handleGradingOrgChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+            <option value="" ${!card.gradingOrg ? 'selected' : ''}>无</option>
+            <option value="PSA" ${card.gradingOrg === 'PSA' ? 'selected' : ''}>PSA</option>
+            <option value="CGC" ${card.gradingOrg === 'CGC' ? 'selected' : ''}>CGC</option>
+            <option value="BGS" ${card.gradingOrg === 'BGS' ? 'selected' : ''}>BGS</option>
+            <option value="SGC" ${card.gradingOrg === 'SGC' ? 'selected' : ''}>SGC</option>
+            <option value="ARS" ${card.gradingOrg === 'ARS' ? 'selected' : ''}>ARS</option>
+            <option value="other" ${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? 'selected' : ''}>其他</option>
           </select>
+          <input type="text" id="gradingOrgCustom" value="${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? card.gradingOrg : ''}" class="${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他评级机构">
         </div>
       </div>
       
@@ -3719,6 +3774,12 @@ function editCard(index) {
       saveSourceHistory(sourceValue);
     }
     
+    // 获取评级机构
+    const gradingOrgSelect = document.getElementById('gradingOrg');
+    const gradingOrgValue = gradingOrgSelect.value === 'other' 
+      ? document.getElementById('gradingOrgCustom').value.trim() 
+      : gradingOrgSelect.value;
+    
     // 获取价格信息
     const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
     const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
@@ -3733,6 +3794,7 @@ function editCard(index) {
       series: seriesValue,
       no: document.getElementById('cardNo').value,
       cardType: typeValue || '其他',
+      gradingOrg: gradingOrgValue,
       language: document.getElementById('cardLanguage').value,
       source: sourceValue,
       sourceLink: document.getElementById('cardSourceLink').value.trim(),
@@ -3799,6 +3861,7 @@ function loadSampleData() {
       series: 'LOB', 
       no: '001', 
       cardType: '评级卡', 
+      gradingOrg: 'PSA',
       language: '日文', 
       source: '淘宝',
       sourceLink: 'https://item.taobao.com/item.htm?id=123456',
@@ -3880,6 +3943,7 @@ function loadSampleData() {
       series: 'BS', 
       no: '001', 
       cardType: '评级卡', 
+      gradingOrg: 'CGC',
       language: '英文', 
       source: '淘宝',
       sourceLink: '',
@@ -3907,6 +3971,7 @@ function loadSampleData() {
       series: 'BS', 
       no: '002', 
       cardType: '评级卡', 
+      gradingOrg: 'BGS',
       language: '韩文', 
       source: '卡店',
       sourceLink: '',
@@ -3988,6 +4053,7 @@ function loadSampleData() {
       series: 'LOB', 
       no: '100', 
       cardType: '评级卡', 
+      gradingOrg: 'SGC',
       language: '日文', 
       source: '卡店',
       sourceLink: '',

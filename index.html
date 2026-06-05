@@ -1016,7 +1016,7 @@ function openAddCardModal() {
         </div>
       </div>
       
-      <!-- 语言、库存、卡类型 -->
+      <!-- 语言、库存、评级机构 -->
       <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">语言</label>
@@ -1046,6 +1046,16 @@ function openAddCardModal() {
         </div>
       </div>
       
+      <!-- 是否入库开关 -->
+      <div class="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="isInStock" class="sr-only peer" onchange="handleStockToggle(this)">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+          <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">已入库</span>
+        </label>
+        <span id="stockStatusText" class="text-xs text-amber-600 dark:text-amber-400">未入库（预订中）</span>
+      </div>
+      
       <!-- 来源信息（左：购入相关，右：出售相关） -->
       <div class="grid grid-cols-2 gap-3">
         <!-- 左列：购入 -->
@@ -1064,6 +1074,22 @@ function openAddCardModal() {
             <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
             <input type="text" id="cardPurchaseTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF123456789">
           </div>
+          <!-- 购入凭证图片 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+            <div class="flex flex-wrap gap-2" id="purchaseVoucherPreview">
+              <!-- 预览区域 -->
+            </div>
+            <div class="flex gap-2 mt-2">
+              <input type="file" id="purchaseVoucherInput" accept="image/*" multiple class="hidden" onchange="handleVoucherUpload(this, 'purchase')">
+              <button type="button" onclick="document.getElementById('purchaseVoucherInput').click()" class="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-camera mr-1"></i>添加凭证
+              </button>
+              <button type="button" onclick="clearVouchers('purchase')" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-trash mr-1"></i>清除
+              </button>
+            </div>
+          </div>
         </div>
         <!-- 右列：出售 -->
         <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -1079,6 +1105,22 @@ function openAddCardModal() {
           <div>
             <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
             <input type="text" id="cardSaleTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF987654321">
+          </div>
+          <!-- 出售凭证图片 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+            <div class="flex flex-wrap gap-2" id="saleVoucherPreview">
+              <!-- 预览区域 -->
+            </div>
+            <div class="flex gap-2 mt-2">
+              <input type="file" id="saleVoucherInput" accept="image/*" multiple class="hidden" onchange="handleVoucherUpload(this, 'sale')">
+              <button type="button" onclick="document.getElementById('saleVoucherInput').click()" class="bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-camera mr-1"></i>添加凭证
+              </button>
+              <button type="button" onclick="clearVouchers('sale')" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-trash mr-1"></i>清除
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -1165,20 +1207,23 @@ function openAddCardModal() {
         </div>
       </div>
       
-      <!-- 图片上传 -->
+      <!-- 图片上传 - 支持多张 -->
       <div>
-        <label class="block text-sm font-medium mb-1">卡牌照片</label>
-        <div class="flex items-start gap-3">
-          <div id="imagePreview" class="w-24 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800 overflow-hidden">
-            <i class="fa fa-image text-gray-400 text-2xl"></i>
+        <label class="block text-sm font-medium mb-1">卡牌照片 <span class="text-xs text-gray-400">(可添加多张)</span></label>
+        <div class="flex flex-col gap-3">
+          <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+            <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+              <i class="fa fa-image text-2xl mb-1 block"></i>
+              暂无图片
+            </div>
           </div>
-          <div class="flex-1 flex flex-col gap-2">
-            <input type="file" id="cardImage" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
-            <button type="button" onclick="document.getElementById('cardImage').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
-              <i class="fa fa-upload mr-1"></i>选择图片
+          <div class="flex gap-2">
+            <input type="file" id="cardImageInput" accept="image/*" multiple class="hidden" onchange="handleCardImagesUpload(this)">
+            <button type="button" onclick="document.getElementById('cardImageInput').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-plus mr-1"></i>添加图片
             </button>
-            <button type="button" onclick="clearImage()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
-              <i class="fa fa-trash mr-1"></i>清除
+            <button type="button" onclick="clearCardImages()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-trash mr-1"></i>清除全部
             </button>
           </div>
         </div>
@@ -1264,19 +1309,27 @@ function openAddCardModal() {
       purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
       saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
       markedForDelete: false,
-      image: currentImageBase64,
+      images: cardImagesBase64 || [],
       qty: parseInt(document.getElementById('cardQty').value) || 1,
+      purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
+      saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
       purchasePrice: purchasePrice,
       purchaseCurrency: purchaseCurrency,
       marketPrice: marketPrice,
       marketCurrency: marketCurrency,
       salePrice: salePrice,
-      saleCurrency: saleCurrency
+      saleCurrency: saleCurrency,
+      isInStock: document.getElementById('isInStock')?.checked || false,
+      purchaseVouchers: purchaseVouchersBase64 || [],
+      saleVouchers: saleVouchersBase64 || []
     });
     save();
     render();
     closeModal();
-    currentImageBase64 = null;
+    // 清除图片数据
+    cardImagesBase64 = [];
+    purchaseVouchersBase64 = [];
+    saleVouchersBase64 = [];
     showToast('成功', '卡牌已添加');
   };
 }
@@ -3130,6 +3183,286 @@ function clearImage() {
   updateImagePreview(null);
 }
 
+// === 多张卡牌图片处理 ===
+let cardImagesBase64 = [];
+let purchaseVouchersBase64 = [];
+let saleVouchersBase64 = [];
+
+// === 编辑页面状态变量 ===
+let editCardImages = [];
+let editPurchaseVouchers = [];
+let editSaleVouchers = [];
+
+function handleCardImagesUpload(input) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  files.forEach(file => {
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      return;
+    }
+    
+    // 检查文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      cardImagesBase64.push(e.target.result);
+      updateCardImagesPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  // 清空input以便可以重复选择相同文件
+  input.value = '';
+}
+
+function updateCardImagesPreview() {
+  const previewDiv = document.getElementById('cardImagesPreview');
+  const emptyHint = document.getElementById('emptyImageHint');
+  if (!previewDiv) return;
+  
+  if (cardImagesBase64.length === 0) {
+    previewDiv.innerHTML = `
+      <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+        <i class="fa fa-image text-2xl mb-1 block"></i>
+        暂无图片
+      </div>
+    `;
+  } else {
+    previewDiv.innerHTML = cardImagesBase64.map((img, index) => `
+      <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${index + 1}">
+        <button type="button" onclick="removeCardImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+}
+
+function removeCardImage(index) {
+  cardImagesBase64.splice(index, 1);
+  updateCardImagesPreview();
+}
+
+function clearCardImages() {
+  cardImagesBase64 = [];
+  updateCardImagesPreview();
+}
+
+// === 凭证图片处理 ===
+function handleVoucherUpload(input, type) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
+  const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
+  
+  files.forEach(file => {
+    // 检查文件类型
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      return;
+    }
+    
+    // 检查文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      targetArray.push(e.target.result);
+      updateVoucherPreview(type);
+    };
+    reader.readAsDataURL(file);
+  });
+  
+  // 清空input以便可以重复选择相同文件
+  input.value = '';
+}
+
+function updateVoucherPreview(type) {
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
+  const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
+  const previewDiv = document.getElementById(previewId);
+  if (!previewDiv) return;
+  
+  if (targetArray.length === 0) {
+    previewDiv.innerHTML = '';
+  } else {
+    previewDiv.innerHTML = targetArray.map((img, index) => `
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${img}" class="w-full h-full object-cover" alt="凭证${index + 1}">
+        <button type="button" onclick="removeVoucher(${index}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+}
+
+function removeVoucher(index, type) {
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
+  targetArray.splice(index, 1);
+  updateVoucherPreview(type);
+}
+
+function clearVouchers(type) {
+  if (type === 'purchase') {
+    purchaseVouchersBase64 = [];
+  } else {
+    saleVouchersBase64 = [];
+  }
+  updateVoucherPreview(type);
+}
+
+// === 编辑页面的图片处理函数 ===
+
+// 处理编辑页面卡牌图片上传
+function handleEditCardImagesUpload(input) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      editCardImages.push(e.target.result);
+      updateEditCardImagesPreview();
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+// 更新编辑页面卡牌图片预览
+function updateEditCardImagesPreview() {
+  const preview = document.getElementById('cardImagesPreview');
+  if (!preview) return;
+  
+  if (editCardImages.length === 0) {
+    preview.innerHTML = `
+      <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+        <i class="fa fa-image text-2xl mb-1 block"></i>
+        暂无图片
+      </div>
+    `;
+  } else {
+    preview.innerHTML = editCardImages.map((img, idx) => `
+      <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
+        <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `).join('');
+  }
+}
+
+// 删除编辑页面单张卡牌图片
+function removeEditCardImage(index) {
+  editCardImages.splice(index, 1);
+  updateEditCardImagesPreview();
+}
+
+// 清除编辑页面所有卡牌图片
+function clearEditCardImages() {
+  editCardImages = [];
+  updateEditCardImagesPreview();
+}
+
+// 处理编辑页面凭证上传
+function handleEditVoucherUpload(input, type) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
+  
+  files.forEach(file => {
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      return;
+    }
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
+    }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      targetArray.push(e.target.result);
+      updateEditVoucherPreview(type);
+    };
+    reader.readAsDataURL(file);
+  });
+  input.value = '';
+}
+
+// 更新编辑页面凭证预览
+function updateEditVoucherPreview(type) {
+  const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
+  const preview = document.getElementById(previewId);
+  if (!preview) return;
+  
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
+  
+  preview.innerHTML = targetArray.map((img, idx) => `
+    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+      <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+      <button type="button" onclick="removeEditVoucher(${idx}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  `).join('');
+}
+
+// 删除编辑页面单张凭证
+function removeEditVoucher(index, type) {
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
+  targetArray.splice(index, 1);
+  updateEditVoucherPreview(type);
+}
+
+// 清除编辑页面所有凭证
+function clearEditVouchers(type) {
+  if (type === 'purchase') {
+    editPurchaseVouchers = [];
+  } else {
+    editSaleVouchers = [];
+  }
+  updateEditVoucherPreview(type);
+}
+
+// === 入库开关处理 ===
+function handleStockToggle(checkbox) {
+  const statusText = document.getElementById('stockStatusText');
+  if (statusText) {
+    if (checkbox.checked) {
+      statusText.textContent = '已入库';
+      statusText.className = 'text-xs text-green-600 dark:text-green-400';
+    } else {
+      statusText.textContent = '未入库（预订中）';
+      statusText.className = 'text-xs text-amber-600 dark:text-amber-400';
+    }
+  }
+}
+
 // === 处理类型选择变化 ===
 function handleTypeChange(select) {
   const customInput = document.getElementById('cardTypeCustom');
@@ -3169,6 +3502,33 @@ function showImageModal(imageSrc, cardName) {
     <div class="flex flex-col items-center">
       <img src="${imageSrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}">
       <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">${cardName}</p>
+      <button onclick="closeModal()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
+        <i class="fa fa-times mr-1"></i>关闭
+      </button>
+    </div>
+  `;
+  showModal(content, '卡牌图片');
+}
+
+// === 显示卡牌多张图片 ===
+function showCardImagesModal(cardIndex) {
+  const card = cards[cardIndex];
+  const images = card.images || (card.image ? [card.image] : []);
+  
+  if (images.length === 0) return;
+  
+  const content = `
+    <div class="flex flex-col items-center">
+      <div class="flex flex-wrap gap-3 justify-center max-h-[60vh] overflow-y-auto p-2">
+        ${images.map((img, idx) => `
+          <div class="relative group">
+            <img src="${img}" class="w-32 h-40 object-cover rounded-lg shadow-md cursor-pointer hover:shadow-xl transition-shadow" 
+                 onclick="showImageModal('${img}', '${card.name} - 图片 ${idx + 1}')" alt="${card.name} ${idx + 1}">
+            <span class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded">${idx + 1}/${images.length}</span>
+          </div>
+        `).join('')}
+      </div>
+      <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">${card.name} (${images.length}张图片)</p>
       <button onclick="closeModal()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
         <i class="fa fa-times mr-1"></i>关闭
       </button>
@@ -3229,8 +3589,32 @@ function exportToExcel() {
   
   setTimeout(() => {
     try {
-      const data = [['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种']];
-      cards.forEach(c => data.push([c.name, c.no, c.cardType || '裸卡', c.gradingOrg || '', c.language || '中文', c.source || '', c.sourceLink || '', c.purchaseTrackingNo || '', c.saleTrackingNo || '', c.markedForDelete ? '是' : '否', c.qty, c.purchasePrice || 0, c.purchaseCurrency || 'CNY', c.marketPrice || 0, c.marketCurrency || 'CNY', c.salePrice || 0, c.saleCurrency || 'CNY']));
+      const data = [['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量']];
+      cards.forEach(c => data.push([
+        c.name, 
+        c.no, 
+        c.cardType || '裸卡', 
+        c.gradingOrg || '', 
+        c.language || '中文', 
+        c.source || '', 
+        c.sourceLink || '', 
+        c.purchaseTrackingNo || '', 
+        c.saleTrackingNo || '', 
+        c.markedForDelete ? '是' : '否', 
+        c.qty,
+        c.purchaseQty || 0,
+        c.saleQty || 0,
+        c.purchasePrice || 0, 
+        c.purchaseCurrency || 'CNY', 
+        c.marketPrice || 0, 
+        c.marketCurrency || 'CNY', 
+        c.salePrice || 0, 
+        c.saleCurrency || 'CNY',
+        c.isInStock ? '是' : '否',
+        c.images ? c.images.length : (c.image ? 1 : 0),
+        c.purchaseVouchers ? c.purchaseVouchers.length : 0,
+        c.saleVouchers ? c.saleVouchers.length : 0
+      ]));
       const wb = XLSX.utils.book_new();
       const ws = XLSX.utils.aoa_to_sheet(data);
       XLSX.utils.book_append_sheet(wb, ws, 'TCG');
@@ -3277,12 +3661,18 @@ function handleExcelFile(e) {
         saleTrackingNo: x['出售物流'] || '',
         markedForDelete: x['标记删除'] === '是' || false,
         qty: parseInt(x['数量']) || 1,
+        purchaseQty: parseInt(x['购入数量']) || 0,
+        saleQty: parseInt(x['出售数量']) || 0,
         purchasePrice: parseFloat(x['购入价']) || 0,
         purchaseCurrency: x['购入币种'] || 'CNY',
         marketPrice: parseFloat(x['市场价']) || 0,
         marketCurrency: x['市场币种'] || 'CNY',
         salePrice: parseFloat(x['出售价']) || 0,
-        saleCurrency: x['出售币种'] || 'CNY'
+        saleCurrency: x['出售币种'] || 'CNY',
+        isInStock: x['是否入库'] === '是' || false,
+        images: [],
+        purchaseVouchers: [],
+        saleVouchers: []
       })).filter(c => c.name);
       
       if (importedCards.length === 0) {
@@ -3442,7 +3832,7 @@ function render(data = null) {
       </td>
       <td class="px-2 py-1.5">
         <div class="flex items-center gap-2">
-          ${card.image ? `<img src="${card.image}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图">` : '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>'}
+          ${card.images && card.images.length > 0 ? `<img src="${card.images[0]}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showCardImagesModal(${originalIndex})" data-tooltip="点击可查看所有图片 (${card.images.length}张)">` : (card.image ? `<img src="${card.image}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图">` : '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>')}
           <span class="font-medium text-xs truncate max-w-[100px]" title="${card.name || '-'}">${card.name || '-'}</span>
         </div>
       </td>
@@ -3531,8 +3921,10 @@ function editCard(index) {
   currentCard = index;
   editingCardIndex = index; // 保存编辑索引，用于查价后恢复
   
-  // 设置当前图片
-  currentImageBase64 = card.image || null;
+  // 初始化编辑状态变量
+  editCardImages = card.images ? [...card.images] : (card.image ? [card.image] : []);
+  editPurchaseVouchers = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
+  editSaleVouchers = card.saleVouchers ? [...card.saleVouchers] : [];
   
   const content = `
     <form id="cardForm" class="space-y-3">
@@ -3566,7 +3958,7 @@ function editCard(index) {
         </div>
       </div>
       
-      <!-- 语言、库存、卡类型 -->
+      <!-- 语言、库存、评级机构 -->
       <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">语言</label>
@@ -3596,6 +3988,16 @@ function editCard(index) {
         </div>
       </div>
       
+      <!-- 是否入库开关 -->
+      <div class="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="isInStock" ${card.isInStock ? 'checked' : ''} class="sr-only peer" onchange="handleStockToggle(this)">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-amber-300 dark:peer-focus:ring-amber-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-amber-500"></div>
+          <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">已入库</span>
+        </label>
+        <span id="stockStatusText" class="text-xs ${card.isInStock ? 'text-green-600 dark:text-green-400' : 'text-amber-600 dark:text-amber-400'}">${card.isInStock ? '已入库' : '未入库（预订中）'}</span>
+      </div>
+      
       <!-- 来源信息（左：购入相关，右：出售相关） -->
       <div class="grid grid-cols-2 gap-3">
         <!-- 左列：购入 -->
@@ -3614,6 +4016,29 @@ function editCard(index) {
             <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
             <input type="text" id="cardPurchaseTrackingNo" value="${card.purchaseTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：SF123456789">
           </div>
+          <!-- 购入凭证图片 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">购入凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+            <div class="flex flex-wrap gap-2" id="purchaseVoucherPreview">
+              ${card.purchaseVouchers && card.purchaseVouchers.length > 0 ? card.purchaseVouchers.map((img, idx) => `
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+                  <button type="button" onclick="removeEditVoucher(${idx}, 'purchase')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              `).join('') : ''}
+            </div>
+            <div class="flex gap-2 mt-2">
+              <input type="file" id="purchaseVoucherInput" accept="image/*" multiple class="hidden" onchange="handleEditVoucherUpload(this, 'purchase')">
+              <button type="button" onclick="document.getElementById('purchaseVoucherInput').click()" class="bg-blue-100 dark:bg-blue-900/30 hover:bg-blue-200 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-camera mr-1"></i>添加凭证
+              </button>
+              <button type="button" onclick="clearEditVouchers('purchase')" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-trash mr-1"></i>清除
+              </button>
+            </div>
+          </div>
         </div>
         <!-- 右列：出售 -->
         <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
@@ -3629,6 +4054,29 @@ function editCard(index) {
           <div>
             <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
             <input type="text" id="cardSaleTrackingNo" value="${card.saleTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="如：SF987654321">
+          </div>
+          <!-- 出售凭证图片 -->
+          <div>
+            <label class="block text-sm font-medium mb-1">出售凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+            <div class="flex flex-wrap gap-2" id="saleVoucherPreview">
+              ${card.saleVouchers && card.saleVouchers.length > 0 ? card.saleVouchers.map((img, idx) => `
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+                  <button type="button" onclick="removeEditVoucher(${idx}, 'sale')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              `).join('') : ''}
+            </div>
+            <div class="flex gap-2 mt-2">
+              <input type="file" id="saleVoucherInput" accept="image/*" multiple class="hidden" onchange="handleEditVoucherUpload(this, 'sale')">
+              <button type="button" onclick="document.getElementById('saleVoucherInput').click()" class="bg-green-100 dark:bg-green-900/30 hover:bg-green-200 dark:hover:bg-green-900/50 text-green-600 dark:text-green-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-camera mr-1"></i>添加凭证
+              </button>
+              <button type="button" onclick="clearEditVouchers('sale')" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-1.5 px-3 rounded-lg transition-colors text-sm">
+                <i class="fa fa-trash mr-1"></i>清除
+              </button>
+            </div>
           </div>
         </div>
       </div>
@@ -3715,20 +4163,32 @@ function editCard(index) {
         </div>
       </div>
       
-      <!-- 图片上传 -->
+      <!-- 图片上传 - 支持多张 -->
       <div>
-        <label class="block text-sm font-medium mb-1">卡牌照片</label>
-        <div class="flex items-start gap-3">
-          <div id="imagePreview" class="w-24 h-32 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg flex items-center justify-center bg-gray-50 dark:bg-gray-800 overflow-hidden">
-            ${card.image ? `<img src="${card.image}" class="w-full h-full object-cover" alt="卡牌照片">` : '<i class="fa fa-image text-gray-400 text-2xl"></i>'}
+        <label class="block text-sm font-medium mb-1">卡牌照片 <span class="text-xs text-gray-400">(可添加多张)</span></label>
+        <div class="flex flex-col gap-3">
+          <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
+            ${card.images && card.images.length > 0 ? card.images.map((img, idx) => `
+              <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
+                <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            `).join('') : `
+              <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+                <i class="fa fa-image text-2xl mb-1 block"></i>
+                暂无图片
+              </div>
+            `}
           </div>
-          <div class="flex-1 flex flex-col gap-2">
-            <input type="file" id="cardImage" accept="image/*" class="hidden" onchange="handleImageUpload(this)">
-            <button type="button" onclick="document.getElementById('cardImage').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
-              <i class="fa fa-upload mr-1"></i>${card.image ? '更换' : '选择'}
+          <div class="flex gap-2">
+            <input type="file" id="cardImageInput" accept="image/*" multiple class="hidden" onchange="handleEditCardImagesUpload(this)">
+            <button type="button" onclick="document.getElementById('cardImageInput').click()" class="bg-gray-100 dark:bg-gray-700 hover:bg-gray-200 dark:hover:bg-gray-600 text-gray-700 dark:text-gray-300 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-plus mr-1"></i>添加图片
             </button>
-            <button type="button" onclick="clearImage()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
-              <i class="fa fa-trash mr-1"></i>清除
+            <button type="button" onclick="clearEditCardImages()" class="bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 text-red-600 dark:text-red-400 py-2 px-4 rounded-lg transition-colors text-sm">
+              <i class="fa fa-trash mr-1"></i>清除全部
             </button>
           </div>
         </div>
@@ -3788,6 +4248,11 @@ function editCard(index) {
     const salePrice = parseFloat(document.getElementById('cardSalePrice').value) || 0;
     const saleCurrency = document.getElementById('cardSaleCurrency').value;
     
+    // 获取现有的图片和凭证数据（如果没有新的就保留原有的）
+    const existingImages = cards[index].images || [];
+    const existingPurchaseVouchers = cards[index].purchaseVouchers || [];
+    const existingSaleVouchers = cards[index].saleVouchers || [];
+    
     cards[index] = {
       name: document.getElementById('cardName').value,
       category: categoryValue || '其他',
@@ -3803,19 +4268,27 @@ function editCard(index) {
       purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
       saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
       markedForDelete: cards[index].markedForDelete,
-      image: currentImageBase64,
+      images: editCardImages.length > 0 ? editCardImages : existingImages,
       qty: parseInt(document.getElementById('cardQty').value) || 1,
+      purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
+      saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
       purchasePrice: purchasePrice,
       purchaseCurrency: purchaseCurrency,
       marketPrice: marketPrice,
       marketCurrency: marketCurrency,
       salePrice: salePrice,
-      saleCurrency: saleCurrency
+      saleCurrency: saleCurrency,
+      isInStock: document.getElementById('isInStock')?.checked || false,
+      purchaseVouchers: editPurchaseVouchers.length > 0 ? editPurchaseVouchers : existingPurchaseVouchers,
+      saleVouchers: editSaleVouchers.length > 0 ? editSaleVouchers : existingSaleVouchers
     };
     save();
     render();
     closeModal();
-    currentImageBase64 = null;
+    // 清除编辑状态
+    editCardImages = [];
+    editPurchaseVouchers = [];
+    editSaleVouchers = [];
     showToast('成功', '卡牌已更新');
   };
 }

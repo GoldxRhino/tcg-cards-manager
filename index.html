@@ -1486,7 +1486,7 @@ function openAddCardModal() {
       purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
       saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
       markedForDelete: false,
-      images: cardImagesBase64 || [],
+      images: cardImagesList || [],  // 存储文件名数组
       qty: parseInt(document.getElementById('cardQty').value) || 1,
       purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
       saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
@@ -1497,16 +1497,16 @@ function openAddCardModal() {
       salePrice: salePrice,
       saleCurrency: saleCurrency,
       isInStock: document.getElementById('isInStock')?.checked || false,
-      purchaseVouchers: purchaseVouchersBase64 || [],
-      saleVouchers: saleVouchersBase64 || []
+      purchaseVouchers: purchaseVouchersList || [],  // 存储文件名数组
+      saleVouchers: saleVouchersList || []  // 存储文件名数组
     });
     save();
     render();
     closeModal();
     // 清除图片数据
-    cardImagesBase64 = [];
-    purchaseVouchersBase64 = [];
-    saleVouchersBase64 = [];
+    cardImagesList = [];
+    purchaseVouchersList = [];
+    saleVouchersList = [];
     showToast('成功', '卡牌已添加');
   };
 }
@@ -3804,11 +3804,38 @@ function handleGradingOrgChange(select) {
   }
 }
 
-// === 显示图片大图 ===
-function showImageModal(imageSrc, cardName) {
+// === 异步加载卡牌缩略图 ===
+async function loadCardThumbnail(cardIndex, imageRef, elementId) {
+  const element = document.getElementById(elementId);
+  if (!element) return;
+  
+  let imageUrl = imageRef;
+  
+  // 如果是文件名且使用文件系统，从文件系统加载
+  if (imageRef && !imageRef.startsWith('data:') && !imageRef.startsWith('http') && useFileSystem) {
+    imageUrl = await loadImageFromFile(imageRef);
+  }
+  
+  if (imageUrl) {
+    // 替换为图片
+    const card = cards[cardIndex];
+    const hasMultipleImages = card.images && card.images.length > 1;
+    element.outerHTML = `<img src="${imageUrl}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="${hasMultipleImages ? `showCardImagesModal(${cardIndex})` : `showImageModal('${imageRef}', '${card.name}')`}" data-tooltip="${hasMultipleImages ? `点击可查看所有图片 (${card.images.length}张)` : '点击可查看大图'}" onerror="this.outerHTML='<div class=\\'w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center\\'><i class=\\'fa fa-image text-gray-300 text-[10px]\\'></i></div>'">`;
+  }
+}
+
+// === 显示图片大图（支持文件名）===
+async function showImageModal(imageSrc, cardName) {
+  // 如果 imageSrc 是文件名，从文件系统加载
+  let displaySrc = imageSrc;
+  if (imageSrc && !imageSrc.startsWith('data:') && !imageSrc.startsWith('http') && useFileSystem) {
+    const loadedSrc = await loadImageFromFile(imageSrc);
+    if (loadedSrc) displaySrc = loadedSrc;
+  }
+  
   const content = `
     <div class="flex flex-col items-center">
-      <img src="${imageSrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}">
+      <img src="${displaySrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
       <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">${cardName}</p>
       <button onclick="closeModal()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
         <i class="fa fa-times mr-1"></i>关闭
@@ -3818,20 +3845,31 @@ function showImageModal(imageSrc, cardName) {
   showModal(content, '卡牌图片');
 }
 
-// === 显示卡牌多张图片 ===
-function showCardImagesModal(cardIndex) {
+// === 显示卡牌多张图片（支持文件名）===
+async function showCardImagesModal(cardIndex) {
   const card = cards[cardIndex];
   const images = card.images || (card.image ? [card.image] : []);
   
   if (images.length === 0) return;
   
+  // 预加载所有图片
+  const loadedImages = [];
+  for (let i = 0; i < images.length; i++) {
+    const img = images[i];
+    let src = img;
+    if (img && !img.startsWith('data:') && !img.startsWith('http') && useFileSystem) {
+      src = await loadImageFromFile(img) || img;
+    }
+    loadedImages.push(src);
+  }
+  
   const content = `
     <div class="flex flex-col items-center">
       <div class="flex flex-wrap gap-3 justify-center max-h-[60vh] overflow-y-auto p-2">
-        ${images.map((img, idx) => `
+        ${loadedImages.map((img, idx) => `
           <div class="relative group">
             <img src="${img}" class="w-32 h-40 object-cover rounded-lg shadow-md cursor-pointer hover:shadow-xl transition-shadow" 
-                 onclick="showImageModal('${img}', '${card.name} - 图片 ${idx + 1}')" alt="${card.name} ${idx + 1}">
+                 onclick="showImageModal('${img}', '${card.name} - 图片 ${idx + 1}')" alt="${card.name} ${idx + 1}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
             <span class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded">${idx + 1}/${images.length}</span>
           </div>
         `).join('')}
@@ -4183,16 +4221,28 @@ function render(data = null) {
     const marketPriceConverted = ((card.marketPrice || 0) * getRate(card.marketCurrency)).toFixed(0);
     const salePriceConverted = ((card.salePrice || 0) * getRate(card.saleCurrency)).toFixed(0);
     
+    // 准备图片HTML（使用占位符，稍后异步加载）
+    const hasImages = card.images && card.images.length > 0;
+    const hasImage = card.image;
+    const imageId = `card-thumb-${originalIndex}`;
+    
     tr.innerHTML = `
       <td class="px-2 py-1.5">
         <input type="checkbox" class="card-checkbox rounded text-primary focus:ring-primary cursor-pointer w-3.5 h-3.5" data-id="${originalIndex}" data-tooltip="勾选此卡牌进行批量操作，如批量删除。">
       </td>
       <td class="px-2 py-1.5">
         <div class="flex items-center gap-2">
-          ${card.images && card.images.length > 0 ? `<img src="${card.images[0]}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showCardImagesModal(${originalIndex})" data-tooltip="点击可查看所有图片 (${card.images.length}张)">` : (card.image ? `<img src="${card.image}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图">` : '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>')}
+          ${hasImages ? `<div id="${imageId}" class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform" onclick="showCardImagesModal(${originalIndex})" data-tooltip="点击可查看所有图片 (${card.images.length}张)"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>` : 
+            (hasImage ? `<div id="${imageId}" class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>` : 
+            '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>')}
           <span class="font-medium text-xs truncate max-w-[100px]" title="${card.name || '-'}">${card.name || '-'}</span>
         </div>
-      </td>
+      </td>`;
+    
+    // 异步加载图片
+    if (hasImages || hasImage) {
+      loadCardThumbnail(originalIndex, hasImages ? card.images[0] : card.image, imageId);
+    }
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.series || '-'}</td>
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.no || '-'}</td>
       <td class="px-2 py-1.5">
@@ -4278,10 +4328,10 @@ function editCard(index) {
   currentCard = index;
   editingCardIndex = index; // 保存编辑索引，用于查价后恢复
   
-  // 初始化编辑状态变量
-  editCardImages = card.images ? [...card.images] : (card.image ? [card.image] : []);
-  editPurchaseVouchers = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
-  editSaleVouchers = card.saleVouchers ? [...card.saleVouchers] : [];
+  // 初始化编辑状态变量（使用文件名数组）
+  editCardImagesList = card.images ? [...card.images] : (card.image ? [card.image] : []);
+  editPurchaseVouchersList = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
+  editSaleVouchersList = card.saleVouchers ? [...card.saleVouchers] : [];
   
   const content = `
     <form id="cardForm" class="space-y-3">
@@ -4637,7 +4687,7 @@ function editCard(index) {
         purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
         saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
         markedForDelete: cards[index].markedForDelete,
-        images: editCardImages.length > 0 ? editCardImages : existingImages,
+        images: editCardImagesList.length > 0 ? editCardImagesList : existingImages,
         qty: parseInt(document.getElementById('cardQty').value) || 1,
         purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
         saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
@@ -4648,16 +4698,16 @@ function editCard(index) {
         salePrice: salePrice,
         saleCurrency: saleCurrency,
         isInStock: document.getElementById('isInStock')?.checked || false,
-        purchaseVouchers: editPurchaseVouchers.length > 0 ? editPurchaseVouchers : existingPurchaseVouchers,
-        saleVouchers: editSaleVouchers.length > 0 ? editSaleVouchers : existingSaleVouchers
+        purchaseVouchers: editPurchaseVouchersList.length > 0 ? editPurchaseVouchersList : existingPurchaseVouchers,
+        saleVouchers: editSaleVouchersList.length > 0 ? editSaleVouchersList : existingSaleVouchers
       };
       save();
       render();
       closeModal();
       // 清除编辑状态
-      editCardImages = [];
-      editPurchaseVouchers = [];
-      editSaleVouchers = [];
+      editCardImagesList = [];
+      editPurchaseVouchersList = [];
+      editSaleVouchersList = [];
       showToast('成功', '卡牌已更新');
     } catch (error) {
       console.error('保存卡牌时出错:', error);

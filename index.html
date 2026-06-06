@@ -980,8 +980,8 @@ function openAddCardModal() {
         <input type="text" id="cardName" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
       </div>
       
-      <!-- 分类 -->
-      <div class="grid grid-cols-2 gap-3">
+      <!-- 分类和类型 -->
+      <div class="space-y-3">
         <div>
           <label class="block text-sm font-medium mb-1">分类</label>
           <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
@@ -2839,8 +2839,8 @@ function restoreAddForm(cardData) {
         <input type="text" id="cardName" value="${cardData.name || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
       </div>
       
-      <!-- 分类 -->
-      <div class="grid grid-cols-2 gap-3">
+      <!-- 分类和类型 -->
+      <div class="space-y-3">
         <div>
           <label class="block text-sm font-medium mb-1">分类</label>
           <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">

@@ -3808,8 +3808,32 @@ function closeImagePreview() {
 }
 
 function save() {
-  localStorage.setItem('tcgCards', JSON.stringify(cards));
-  addHistory('save', '保存数据', { cards: [...cards] });
+  try {
+    const data = JSON.stringify(cards);
+    
+    // 检查数据大小（localStorage 通常限制在 5-10MB）
+    const dataSize = new Blob([data]).size;
+    const maxSize = 4.5 * 1024 * 1024; // 4.5MB 安全限制
+    
+    if (dataSize > maxSize) {
+      showToast('警告', `数据过大 (${(dataSize/1024/1024).toFixed(2)}MB)，建议删除一些图片或卡牌`, 'warning');
+      console.warn('数据大小超过限制:', dataSize, 'bytes');
+      return false;
+    }
+    
+    localStorage.setItem('tcgCards', data);
+    addHistory('save', '保存数据', { cards: [...cards] });
+    return true;
+  } catch (e) {
+    if (e.name === 'QuotaExceededError') {
+      showToast('错误', '存储空间已满！请删除一些卡牌或图片后再试', 'error');
+      console.error('LocalStorage 配额超出:', e);
+    } else {
+      showToast('错误', '保存失败: ' + e.message, 'error');
+      console.error('保存失败:', e);
+    }
+    return false;
+  }
 }
 
 function addHistory(action, details, data = {}) {
@@ -3818,21 +3842,30 @@ function addHistory(action, details, data = {}) {
     operationHistory = operationHistory.slice(0, historyIndex + 1);
   }
   
-  operationHistory.push({
+  // 不存储完整数据，只存储引用和摘要，避免占用过多空间
+  const historyEntry = {
     id: Date.now(),
     action,
     timestamp: new Date().toISOString(),
     details,
-    data
-  });
+    dataSummary: data.cards ? { count: data.cards.length } : undefined
+  };
+  
+  operationHistory.push(historyEntry);
   
   // 限制历史记录数量
-  if (operationHistory.length > 50) {
+  if (operationHistory.length > 20) {
     operationHistory.shift();
   }
   
   historyIndex = operationHistory.length - 1;
-  localStorage.setItem('tcgHistory', JSON.stringify(operationHistory));
+  
+  try {
+    localStorage.setItem('tcgHistory', JSON.stringify(operationHistory));
+  } catch (e) {
+    // 历史记录存储失败不影响主功能
+    console.warn('历史记录保存失败:', e);
+  }
 }
 
 function generateId() {

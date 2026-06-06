@@ -3804,6 +3804,69 @@ function handleGradingOrgChange(select) {
   }
 }
 
+// === 异步加载编辑表单的图片预览 ===
+async function loadEditCardImagesPreview() {
+  const previewDiv = document.getElementById('cardImagesPreview');
+  if (!previewDiv) return;
+  
+  if (editCardImagesList.length === 0) {
+    previewDiv.innerHTML = `
+      <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+        <i class="fa fa-image text-2xl mb-1 block"></i>
+        暂无图片
+      </div>
+    `;
+    return;
+  }
+  
+  // 先显示占位符
+  let html = '';
+  for (let i = 0; i < editCardImagesList.length; i++) {
+    html += `
+      <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600" id="edit-img-${i}">
+        <div class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+          <i class="fa fa-spinner fa-spin text-gray-400"></i>
+        </div>
+        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `;
+  }
+  previewDiv.innerHTML = html;
+  
+  // 异步加载图片
+  for (let i = 0; i < editCardImagesList.length; i++) {
+    const fileName = editCardImagesList[i];
+    const imgElement = document.getElementById(`edit-img-${i}`);
+    if (!imgElement) continue;
+    
+    let imgSrc = fileName;
+    // 如果是文件名且使用文件系统，从文件系统加载
+    if (fileName && !fileName.startsWith('data:') && !fileName.startsWith('http') && useFileSystem) {
+      imgSrc = await loadImageFromFile(fileName) || '';
+    }
+    
+    if (imgSrc) {
+      imgElement.innerHTML = `
+        <img src="${imgSrc}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.outerHTML='<div class=\\'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700\\'><i class=\\'fa fa-image text-gray-400\\'></i></div>'">
+        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      `;
+    } else {
+      imgElement.innerHTML = `
+        <div class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
+          <i class="fa fa-image text-gray-400"></i>
+        </div>
+        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      `;
+    }
+  }
+}
+
 // === 异步加载卡牌缩略图 ===
 async function loadCardThumbnail(cardIndex, imageRef, elementId) {
   const element = document.getElementById(elementId);
@@ -4586,19 +4649,7 @@ function editCard(index) {
         <label class="block text-sm font-medium mb-1">卡牌照片 <span class="text-xs text-gray-400">(可添加多张)</span></label>
         <div class="flex flex-col gap-3">
           <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
-            ${card.images && card.images.length > 0 ? card.images.map((img, idx) => `
-              <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
-                <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
-                  <i class="fa fa-times"></i>
-                </button>
-              </div>
-            `).join('') : `
-              <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
-                <i class="fa fa-image text-2xl mb-1 block"></i>
-                暂无图片
-              </div>
-            `}
+            <!-- 图片预览将由 JavaScript 异步加载 -->
           </div>
           <div class="flex gap-2">
             <input type="file" id="cardImageInput" accept="image/*" multiple class="hidden" onchange="handleEditCardImagesUpload(this)">
@@ -4621,6 +4672,9 @@ function editCard(index) {
   `;
   
   showModal(content, '编辑卡牌');
+  
+  // 异步加载编辑表单的图片预览
+  setTimeout(() => loadEditCardImagesPreview(), 0);
   
   document.getElementById('cardForm').onsubmit = function(e) {
     e.preventDefault();

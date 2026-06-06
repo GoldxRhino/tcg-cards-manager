@@ -3976,7 +3976,7 @@ function editCard(index) {
         <input type="text" id="cardName" value="${card.name || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" required>
       </div>
       
-      <!-- 分类 -->
+      <!-- 分类和类型 -->
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">分类</label>
@@ -3984,6 +3984,17 @@ function editCard(index) {
             ${generateCategoryOptions(card.category)}
           </select>
           <input type="text" id="cardCategoryCustom" value="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(card.category) ? card.category : ''}" class="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(card.category) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入自定义分类">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">类型</label>
+          <select id="cardType" onchange="handleTypeChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer">
+            <option value="裸卡" ${card.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
+            <option value="评级卡" ${card.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+            <option value="卡册" ${card.cardType === '卡册' ? 'selected' : ''}>卡册</option>
+            <option value="卡包" ${card.cardType === '卡包' ? 'selected' : ''}>卡包</option>
+            <option value="other" ${card.cardType !== '裸卡' && card.cardType !== '评级卡' && card.cardType !== '卡册' && card.cardType !== '卡包' ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" id="cardTypeCustom" value="${card.cardType && !['裸卡', '评级卡', '卡册', '卡包'].includes(card.cardType) ? card.cardType : ''}" class="${card.cardType && !['裸卡', '评级卡', '卡册', '卡包'].includes(card.cardType) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入自定义类型">
         </div>
       </div>
       

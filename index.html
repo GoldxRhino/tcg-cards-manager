@@ -655,6 +655,12 @@
 // === 全局变量 ===
 let cards = JSON.parse(localStorage.getItem('tcgCards')) || [];
 let currency = localStorage.getItem('tcgCurrency') || 'CNY';
+
+// === 文件系统相关变量 ===
+let imageDirectoryHandle = null; // 图片文件夹句柄
+let useFileSystem = false; // 是否使用文件系统存储
+const IMAGE_DIR_NAME = 'tcg-card-images'; // 图片文件夹名称
+
 // 汇率（以CNY为基准1）
 const rate = { 
   CNY: 1, 
@@ -753,6 +759,167 @@ function initApp() {
   
   // 确保已删除数量正确显示
   updateDeletedCount();
+  
+  // 初始化文件系统（如果之前已授权）
+  initFileSystem();
+}
+
+// === 初始化文件系统 ===
+async function initFileSystem() {
+  // 检查浏览器是否支持 File System Access API
+  if (!('showDirectoryPicker' in window)) {
+    console.log('浏览器不支持 File System Access API');
+    return;
+  }
+  
+  // 尝试从 IndexedDB 恢复之前的目录句柄
+  try {
+    const db = await openDB('TCGCardDB', 1);
+    const handle = await db.get('directoryHandles', 'imageDirectory');
+    if (handle) {
+      // 验证权限
+      const permission = await handle.queryPermission({ mode: 'readwrite' });
+      if (permission === 'granted') {
+        imageDirectoryHandle = handle;
+        useFileSystem = true;
+        console.log('已恢复图片文件夹访问权限');
+      }
+    }
+  } catch (e) {
+    console.log('无法恢复文件系统访问:', e);
+  }
+}
+
+// === 选择图片存储文件夹 ===
+async function selectImageDirectory() {
+  try {
+    // 请求用户选择文件夹
+    const dirHandle = await window.showDirectoryPicker({
+      mode: 'readwrite',
+      startIn: 'downloads'
+    });
+    
+    // 创建或获取 tcg-card-images 子文件夹
+    let imageDir;
+    try {
+      imageDir = await dirHandle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true });
+    } catch (e) {
+      showToast('错误', '无法创建图片文件夹', 'error');
+      return false;
+    }
+    
+    imageDirectoryHandle = imageDir;
+    useFileSystem = true;
+    
+    // 保存句柄到 IndexedDB
+    await saveDirectoryHandle(imageDir);
+    
+    showToast('成功', '图片文件夹已设置：' + IMAGE_DIR_NAME);
+    return true;
+  } catch (e) {
+    if (e.name === 'AbortError') {
+      console.log('用户取消了文件夹选择');
+    } else {
+      showToast('错误', '无法访问文件夹: ' + e.message, 'error');
+      console.error('选择文件夹失败:', e);
+    }
+    return false;
+  }
+}
+
+// === 保存目录句柄到 IndexedDB ===
+async function saveDirectoryHandle(handle) {
+  const db = await openDB('TCGCardDB', 1, {
+    upgrade(db) {
+      if (!db.objectStoreNames.contains('directoryHandles')) {
+        db.createObjectStore('directoryHandles');
+      }
+    }
+  });
+  await db.put('directoryHandles', handle, 'imageDirectory');
+}
+
+// === 简单的 IndexedDB 封装 ===
+function openDB(name, version, upgradeCallback) {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(name, version);
+    request.onerror = () => reject(request.error);
+    request.onsuccess = () => {
+      const db = request.result;
+      // 包装 db 对象，添加 get/put 方法
+      db.get = function(storeName, key) {
+        return new Promise((res, rej) => {
+          const tx = db.transaction(storeName, 'readonly');
+          const store = tx.objectStore(storeName);
+          const req = store.get(key);
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+      };
+      db.put = function(storeName, value, key) {
+        return new Promise((res, rej) => {
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.put(value, key);
+          req.onsuccess = () => res(req.result);
+          req.onerror = () => rej(req.error);
+        });
+      };
+      resolve(db);
+    };
+    if (upgradeCallback) {
+      request.onupgradeneeded = (event) => {
+        upgradeCallback(event.target.result);
+      };
+    }
+  });
+}
+
+// === 保存图片到本地文件夹 ===
+async function saveImageToFile(file, fileName) {
+  if (!useFileSystem || !imageDirectoryHandle) {
+    throw new Error('文件系统未初始化');
+  }
+  
+  try {
+    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
+    const writable = await fileHandle.createWritable();
+    await writable.write(file);
+    await writable.close();
+    return fileName;
+  } catch (e) {
+    console.error('保存图片失败:', e);
+    throw e;
+  }
+}
+
+// === 从本地文件夹读取图片 ===
+async function loadImageFromFile(fileName) {
+  if (!useFileSystem || !imageDirectoryHandle) {
+    return null;
+  }
+  
+  try {
+    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
+    const file = await fileHandle.getFile();
+    return URL.createObjectURL(file);
+  } catch (e) {
+    console.warn('读取图片失败:', fileName, e);
+    return null;
+  }
+}
+
+// === 删除本地图片文件 ===
+async function deleteImageFile(fileName) {
+  if (!useFileSystem || !imageDirectoryHandle) {
+    return;
+  }
+  
+  try {
+    await imageDirectoryHandle.removeEntry(fileName);
+  } catch (e) {
+    console.warn('删除图片失败:', fileName, e);
+  }
 }
 
 // === 获取分类历史记录 ===
@@ -3194,83 +3361,160 @@ function clearImage() {
 }
 
 // === 多张卡牌图片处理 ===
-let cardImagesBase64 = [];
-let purchaseVouchersBase64 = [];
-let saleVouchersBase64 = [];
+// 存储结构：{ fileName: string, isNew: boolean, file?: File, base64?: string }
+let cardImagesData = [];
+let purchaseVouchersData = [];
+let saleVouchersData = [];
 
 // === 编辑页面状态变量 ===
-let editCardImages = [];
-let editPurchaseVouchers = [];
-let editSaleVouchers = [];
+let editCardImagesData = [];
+let editPurchaseVouchersData = [];
+let editSaleVouchersData = [];
 
-function handleCardImagesUpload(input) {
+// 生成唯一的文件名
+function generateImageFileName(prefix = 'img') {
+  const timestamp = Date.now();
+  const random = Math.random().toString(36).substr(2, 9);
+  return `${prefix}_${timestamp}_${random}.jpg`;
+}
+
+// 检查并请求文件系统权限
+async function ensureFileSystemAccess() {
+  if (!useFileSystem) {
+    // 未设置文件夹，提示用户选择
+    const confirmed = confirm('是否将图片保存到本地文件夹？\n\n点击"确定"选择文件夹，点击"取消"继续使用内存存储（数据量大时可能失败）。');
+    if (confirmed) {
+      const success = await selectImageDirectory();
+      return success;
+    }
+    return false;
+  }
+  return true;
+}
+
+async function handleCardImagesUpload(input) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  files.forEach(file => {
+  // 检查是否使用文件系统
+  const canUseFileSystem = await ensureFileSystemAccess();
+  
+  for (const file of files) {
     // 检查文件类型
     if (!file.type.startsWith('image/')) {
       showToast('错误', '请选择图片文件', 'error');
-      return;
+      continue;
     }
     
-    // 检查文件大小（限制为 2MB）
-    if (file.size > 2 * 1024 * 1024) {
-      showToast('错误', '图片大小不能超过 2MB', 'error');
-      return;
+    // 检查文件大小（限制为 5MB）
+    if (file.size > 5 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 5MB', 'error');
+      continue;
     }
     
-    const reader = new FileReader();
-    reader.onload = function(e) {
-      cardImagesBase64.push(e.target.result);
-      updateCardImagesPreview();
-    };
-    reader.readAsDataURL(file);
-  });
+    const fileName = generateImageFileName('card');
+    
+    if (canUseFileSystem && useFileSystem) {
+      // 保存到本地文件夹
+      try {
+        await saveImageToFile(file, fileName);
+        cardImagesData.push({ fileName, isNew: false }); // 已保存到文件系统
+        updateCardImagesPreview();
+      } catch (e) {
+        showToast('错误', '保存图片到文件夹失败', 'error');
+        console.error(e);
+      }
+    } else {
+      // 使用 base64 存储（向后兼容）
+      const reader = new FileReader();
+      reader.onload = function(e) {
+        cardImagesData.push({ 
+          fileName, 
+          isNew: true, 
+          base64: e.target.result 
+        });
+        updateCardImagesPreview();
+      };
+      reader.readAsDataURL(file);
+    }
+  }
   
   // 清空input以便可以重复选择相同文件
   input.value = '';
 }
 
-function updateCardImagesPreview() {
+async function updateCardImagesPreview() {
   const previewDiv = document.getElementById('cardImagesPreview');
-  const emptyHint = document.getElementById('emptyImageHint');
   if (!previewDiv) return;
   
-  if (cardImagesBase64.length === 0) {
+  if (cardImagesData.length === 0) {
     previewDiv.innerHTML = `
       <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
         <i class="fa fa-image text-2xl mb-1 block"></i>
         暂无图片
       </div>
     `;
-  } else {
-    previewDiv.innerHTML = cardImagesBase64.map((img, index) => `
+    return;
+  }
+  
+  // 构建预览 HTML
+  let html = '';
+  for (let i = 0; i < cardImagesData.length; i++) {
+    const imgData = cardImagesData[i];
+    let imgSrc = '';
+    
+    if (imgData.base64) {
+      // 新上传的图片，使用 base64
+      imgSrc = imgData.base64;
+    } else if (imgData.fileName && useFileSystem) {
+      // 从文件系统加载
+      imgSrc = await loadImageFromFile(imgData.fileName) || '';
+    }
+    
+    html += `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-        <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${index + 1}">
-        <button type="button" onclick="removeCardImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+        <img src="${imgSrc}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+        <button type="button" onclick="removeCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
       </div>
-    `).join('');
+    `;
   }
+  previewDiv.innerHTML = html;
 }
 
-function removeCardImage(index) {
+async function removeCardImage(index) {
   if (!confirm('确定要删除这张卡牌图片吗？')) {
     return;
   }
-  cardImagesBase64.splice(index, 1);
-  updateCardImagesPreview();
+  
+  const imgData = cardImagesData[index];
+  // 如果已保存到文件系统，删除文件
+  if (imgData.fileName && !imgData.isNew && useFileSystem) {
+    await deleteImageFile(imgData.fileName);
+  }
+  
+  cardImagesData.splice(index, 1);
+  await updateCardImagesPreview();
 }
 
-function clearCardImages() {
-  if (cardImagesBase64.length === 0) return;
-  if (!confirm(`确定要清除所有卡牌图片吗？共 ${cardImagesBase64.length} 张`)) {
+async function clearCardImages() {
+  if (cardImagesData.length === 0) return;
+  if (!confirm(`确定要清除所有卡牌图片吗？共 ${cardImagesData.length} 张`)) {
     return;
   }
-  cardImagesBase64 = [];
-  updateCardImagesPreview();
+  
+  // 删除文件系统中的图片
+  if (useFileSystem) {
+    for (const imgData of cardImagesData) {
+      if (imgData.fileName && !imgData.isNew) {
+        await deleteImageFile(imgData.fileName);
+      }
+    }
+  }
+  
+  cardImagesData = [];
+  await updateCardImagesPreview();
 }
 
 // === 凭证图片处理 ===

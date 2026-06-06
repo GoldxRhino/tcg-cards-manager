@@ -3320,12 +3320,20 @@ function updateVoucherPreview(type) {
 }
 
 function removeVoucher(index, type) {
+  if (!confirm('确定要删除这张凭证图片吗？')) {
+    return;
+  }
   const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
   targetArray.splice(index, 1);
   updateVoucherPreview(type);
 }
 
 function clearVouchers(type) {
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
+  if (targetArray.length === 0) return;
+  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) {
+    return;
+  }
   if (type === 'purchase') {
     purchaseVouchersBase64 = [];
   } else {
@@ -3444,6 +3452,9 @@ function updateEditVoucherPreview(type) {
 
 // 删除编辑页面单张凭证
 function removeEditVoucher(index, type) {
+  if (!confirm('确定要删除这张凭证图片吗？')) {
+    return;
+  }
   const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   targetArray.splice(index, 1);
   updateEditVoucherPreview(type);
@@ -3451,6 +3462,11 @@ function removeEditVoucher(index, type) {
 
 // 清除编辑页面所有凭证
 function clearEditVouchers(type) {
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
+  if (targetArray.length === 0) return;
+  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) {
+    return;
+  }
   if (type === 'purchase') {
     editPurchaseVouchers = [];
   } else {

@@ -615,6 +615,16 @@
     </div>
   </div>
 
+  <!-- 图片预览模态框 -->
+  <div id="imagePreviewModal" class="fixed inset-0 bg-black/90 backdrop-blur-sm z-[60] hidden flex items-center justify-center p-4" onclick="closeImagePreview()">
+    <div class="relative max-w-[90vw] max-h-[90vh]">
+      <img id="previewImage" src="" alt="预览" class="max-w-full max-h-[85vh] object-contain rounded-lg">
+      <button type="button" onclick="closeImagePreview()" class="absolute -top-10 right-0 text-white hover:text-gray-300 text-2xl">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  </div>
+
   <!-- 文件输入 -->
   <input type="file" id="fileInput" class="hidden">
   <input type="file" id="backupInput" class="hidden">
@@ -3299,9 +3309,9 @@ function updateVoucherPreview(type) {
     previewDiv.innerHTML = '';
   } else {
     previewDiv.innerHTML = targetArray.map((img, index) => `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
         <img src="${img}" class="w-full h-full object-cover" alt="凭证${index + 1}">
-        <button type="button" onclick="removeVoucher(${index}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+        <button type="button" onclick="event.stopPropagation(); removeVoucher(${index}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
       </div>
@@ -3423,9 +3433,9 @@ function updateEditVoucherPreview(type) {
   const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   
   preview.innerHTML = targetArray.map((img, idx) => `
-    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
       <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
-      <button type="button" onclick="removeEditVoucher(${idx}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+      <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
         <i class="fa fa-times"></i>
       </button>
     </div>
@@ -3750,6 +3760,23 @@ function closeModal() {
   }
 }
 
+// === 图片预览功能 ===
+function openImagePreview(src) {
+  const modal = document.getElementById('imagePreviewModal');
+  const img = document.getElementById('previewImage');
+  if (modal && img) {
+    img.src = src;
+    modal.classList.remove('hidden');
+  }
+}
+
+function closeImagePreview() {
+  const modal = document.getElementById('imagePreviewModal');
+  if (modal) {
+    modal.classList.add('hidden');
+  }
+}
+
 function save() {
   localStorage.setItem('tcgCards', JSON.stringify(cards));
   addHistory('save', '保存数据', { cards: [...cards] });
@@ -4020,9 +4047,9 @@ function editCard(index) {
             <label class="block text-sm font-medium mb-1">购入凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="purchaseVoucherPreview">
               ${card.purchaseVouchers && card.purchaseVouchers.length > 0 ? card.purchaseVouchers.map((img, idx) => `
-                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
                   <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
-                  <button type="button" onclick="removeEditVoucher(${idx}, 'purchase')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                  <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, 'purchase')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
                     <i class="fa fa-times"></i>
                   </button>
                 </div>
@@ -4059,9 +4086,9 @@ function editCard(index) {
             <label class="block text-sm font-medium mb-1">出售凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="saleVoucherPreview">
               ${card.saleVouchers && card.saleVouchers.length > 0 ? card.saleVouchers.map((img, idx) => `
-                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
                   <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
-                  <button type="button" onclick="removeEditVoucher(${idx}, 'sale')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                  <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, 'sale')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
                     <i class="fa fa-times"></i>
                   </button>
                 </div>

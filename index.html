@@ -3257,11 +3257,18 @@ function updateCardImagesPreview() {
 }
 
 function removeCardImage(index) {
+  if (!confirm('确定要删除这张卡牌图片吗？')) {
+    return;
+  }
   cardImagesBase64.splice(index, 1);
   updateCardImagesPreview();
 }
 
 function clearCardImages() {
+  if (cardImagesBase64.length === 0) return;
+  if (!confirm(`确定要清除所有卡牌图片吗？共 ${cardImagesBase64.length} 张`)) {
+    return;
+  }
   cardImagesBase64 = [];
   updateCardImagesPreview();
 }
@@ -3395,12 +3402,19 @@ function updateEditCardImagesPreview() {
 
 // 删除编辑页面单张卡牌图片
 function removeEditCardImage(index) {
+  if (!confirm('确定要删除这张卡牌图片吗？')) {
+    return;
+  }
   editCardImages.splice(index, 1);
   updateEditCardImagesPreview();
 }
 
 // 清除编辑页面所有卡牌图片
 function clearEditCardImages() {
+  if (editCardImages.length === 0) return;
+  if (!confirm(`确定要清除所有卡牌图片吗？共 ${editCardImages.length} 张`)) {
+    return;
+  }
   editCardImages = [];
   updateEditCardImagesPreview();
 }

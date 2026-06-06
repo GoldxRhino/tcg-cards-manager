@@ -4260,89 +4260,94 @@ function editCard(index) {
   document.getElementById('cardForm').onsubmit = function(e) {
     e.preventDefault();
     
-    const typeSelect = document.getElementById('cardType');
-    const typeValue = typeSelect.value === 'other' 
-      ? document.getElementById('cardTypeCustom').value.trim() 
-      : typeSelect.value;
-    
-    const categorySelect = document.getElementById('cardCategory');
-    const categoryValue = categorySelect.value === 'other' 
-      ? document.getElementById('cardCategoryCustom').value.trim() 
-      : categorySelect.value;
-    
-    // 保存分类历史记录
-    if (categoryValue && categoryValue !== '其他') {
-      saveCategoryHistory(categoryValue);
+    try {
+      const typeSelect = document.getElementById('cardType');
+      const typeValue = typeSelect.value === 'other' 
+        ? document.getElementById('cardTypeCustom').value.trim() 
+        : typeSelect.value;
+      
+      const categorySelect = document.getElementById('cardCategory');
+      const categoryValue = categorySelect.value === 'other' 
+        ? document.getElementById('cardCategoryCustom').value.trim() 
+        : categorySelect.value;
+      
+      // 保存分类历史记录
+      if (categoryValue && categoryValue !== '其他') {
+        saveCategoryHistory(categoryValue);
+      }
+      
+      // 保存系列历史记录
+      const seriesValue = document.getElementById('cardSeries').value.trim();
+      if (seriesValue) {
+        saveSeriesHistory(seriesValue);
+      }
+      
+      // 保存来源历史记录
+      const sourceValue = document.getElementById('cardSource').value.trim();
+      if (sourceValue) {
+        saveSourceHistory(sourceValue);
+      }
+      
+      // 获取评级机构
+      const gradingOrgSelect = document.getElementById('gradingOrg');
+      const gradingOrgValue = gradingOrgSelect.value === 'other' 
+        ? document.getElementById('gradingOrgCustom').value.trim() 
+        : gradingOrgSelect.value;
+      
+      // 获取价格信息
+      const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
+      const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
+      const marketPrice = parseFloat(document.getElementById('cardMarketPrice').value) || 0;
+      const marketCurrency = document.getElementById('cardMarketCurrency').value;
+      const salePrice = parseFloat(document.getElementById('cardSalePrice').value) || 0;
+      const saleCurrency = document.getElementById('cardSaleCurrency').value;
+      
+      // 获取现有的图片和凭证数据（如果没有新的就保留原有的）
+      const existingImages = cards[index].images || [];
+      const existingPurchaseVouchers = cards[index].purchaseVouchers || [];
+      const existingSaleVouchers = cards[index].saleVouchers || [];
+      
+      cards[index] = {
+        name: document.getElementById('cardName').value,
+        category: categoryValue || '其他',
+        series: seriesValue,
+        no: document.getElementById('cardNo').value,
+        cardType: typeValue || '其他',
+        gradingOrg: gradingOrgValue,
+        language: document.getElementById('cardLanguage').value,
+        source: sourceValue,
+        sourceLink: document.getElementById('cardSourceLink').value.trim(),
+        saleSource: document.getElementById('cardSaleSource').value.trim(),
+        saleLink: document.getElementById('cardSaleLink').value.trim(),
+        purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
+        saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
+        markedForDelete: cards[index].markedForDelete,
+        images: editCardImages.length > 0 ? editCardImages : existingImages,
+        qty: parseInt(document.getElementById('cardQty').value) || 1,
+        purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
+        saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
+        purchasePrice: purchasePrice,
+        purchaseCurrency: purchaseCurrency,
+        marketPrice: marketPrice,
+        marketCurrency: marketCurrency,
+        salePrice: salePrice,
+        saleCurrency: saleCurrency,
+        isInStock: document.getElementById('isInStock')?.checked || false,
+        purchaseVouchers: editPurchaseVouchers.length > 0 ? editPurchaseVouchers : existingPurchaseVouchers,
+        saleVouchers: editSaleVouchers.length > 0 ? editSaleVouchers : existingSaleVouchers
+      };
+      save();
+      render();
+      closeModal();
+      // 清除编辑状态
+      editCardImages = [];
+      editPurchaseVouchers = [];
+      editSaleVouchers = [];
+      showToast('成功', '卡牌已更新');
+    } catch (error) {
+      console.error('保存卡牌时出错:', error);
+      showToast('错误', '保存失败: ' + error.message, 'error');
     }
-    
-    // 保存系列历史记录
-    const seriesValue = document.getElementById('cardSeries').value.trim();
-    if (seriesValue) {
-      saveSeriesHistory(seriesValue);
-    }
-    
-    // 保存来源历史记录
-    const sourceValue = document.getElementById('cardSource').value.trim();
-    if (sourceValue) {
-      saveSourceHistory(sourceValue);
-    }
-    
-    // 获取评级机构
-    const gradingOrgSelect = document.getElementById('gradingOrg');
-    const gradingOrgValue = gradingOrgSelect.value === 'other' 
-      ? document.getElementById('gradingOrgCustom').value.trim() 
-      : gradingOrgSelect.value;
-    
-    // 获取价格信息
-    const purchasePrice = parseFloat(document.getElementById('cardPurchasePrice').value) || 0;
-    const purchaseCurrency = document.getElementById('cardPurchaseCurrency').value;
-    const marketPrice = parseFloat(document.getElementById('cardMarketPrice').value) || 0;
-    const marketCurrency = document.getElementById('cardMarketCurrency').value;
-    const salePrice = parseFloat(document.getElementById('cardSalePrice').value) || 0;
-    const saleCurrency = document.getElementById('cardSaleCurrency').value;
-    
-    // 获取现有的图片和凭证数据（如果没有新的就保留原有的）
-    const existingImages = cards[index].images || [];
-    const existingPurchaseVouchers = cards[index].purchaseVouchers || [];
-    const existingSaleVouchers = cards[index].saleVouchers || [];
-    
-    cards[index] = {
-      name: document.getElementById('cardName').value,
-      category: categoryValue || '其他',
-      series: seriesValue,
-      no: document.getElementById('cardNo').value,
-      cardType: typeValue || '其他',
-      gradingOrg: gradingOrgValue,
-      language: document.getElementById('cardLanguage').value,
-      source: sourceValue,
-      sourceLink: document.getElementById('cardSourceLink').value.trim(),
-      saleSource: document.getElementById('cardSaleSource').value.trim(),
-      saleLink: document.getElementById('cardSaleLink').value.trim(),
-      purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
-      saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
-      markedForDelete: cards[index].markedForDelete,
-      images: editCardImages.length > 0 ? editCardImages : existingImages,
-      qty: parseInt(document.getElementById('cardQty').value) || 1,
-      purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
-      saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
-      purchasePrice: purchasePrice,
-      purchaseCurrency: purchaseCurrency,
-      marketPrice: marketPrice,
-      marketCurrency: marketCurrency,
-      salePrice: salePrice,
-      saleCurrency: saleCurrency,
-      isInStock: document.getElementById('isInStock')?.checked || false,
-      purchaseVouchers: editPurchaseVouchers.length > 0 ? editPurchaseVouchers : existingPurchaseVouchers,
-      saleVouchers: editSaleVouchers.length > 0 ? editSaleVouchers : existingSaleVouchers
-    };
-    save();
-    render();
-    closeModal();
-    // 清除编辑状态
-    editCardImages = [];
-    editPurchaseVouchers = [];
-    editSaleVouchers = [];
-    showToast('成功', '卡牌已更新');
   };
 }
 

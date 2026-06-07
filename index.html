@@ -655,12 +655,6 @@
 // === 全局变量 ===
 let cards = JSON.parse(localStorage.getItem('tcgCards')) || [];
 let currency = localStorage.getItem('tcgCurrency') || 'CNY';
-
-// === 文件系统相关变量 ===
-let imageDirectoryHandle = null; // 图片文件夹句柄
-let useFileSystem = false; // 是否使用文件系统存储
-const IMAGE_DIR_NAME = 'tcg-card-images'; // 图片文件夹名称
-
 // 汇率（以CNY为基准1）
 const rate = { 
   CNY: 1, 
@@ -759,167 +753,6 @@ function initApp() {
   
   // 确保已删除数量正确显示
   updateDeletedCount();
-  
-  // 初始化文件系统（如果之前已授权）
-  initFileSystem();
-}
-
-// === 初始化文件系统 ===
-async function initFileSystem() {
-  // 检查浏览器是否支持 File System Access API
-  if (!('showDirectoryPicker' in window)) {
-    console.log('浏览器不支持 File System Access API');
-    return;
-  }
-  
-  // 尝试从 IndexedDB 恢复之前的目录句柄
-  try {
-    const db = await openDB('TCGCardDB', 1);
-    const handle = await db.get('directoryHandles', 'imageDirectory');
-    if (handle) {
-      // 验证权限
-      const permission = await handle.queryPermission({ mode: 'readwrite' });
-      if (permission === 'granted') {
-        imageDirectoryHandle = handle;
-        useFileSystem = true;
-        console.log('已恢复图片文件夹访问权限');
-      }
-    }
-  } catch (e) {
-    console.log('无法恢复文件系统访问:', e);
-  }
-}
-
-// === 选择图片存储文件夹 ===
-async function selectImageDirectory() {
-  try {
-    // 请求用户选择文件夹
-    const dirHandle = await window.showDirectoryPicker({
-      mode: 'readwrite',
-      startIn: 'downloads'
-    });
-    
-    // 创建或获取 tcg-card-images 子文件夹
-    let imageDir;
-    try {
-      imageDir = await dirHandle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true });
-    } catch (e) {
-      showToast('错误', '无法创建图片文件夹', 'error');
-      return false;
-    }
-    
-    imageDirectoryHandle = imageDir;
-    useFileSystem = true;
-    
-    // 保存句柄到 IndexedDB
-    await saveDirectoryHandle(imageDir);
-    
-    showToast('成功', '图片文件夹已设置：' + IMAGE_DIR_NAME);
-    return true;
-  } catch (e) {
-    if (e.name === 'AbortError') {
-      console.log('用户取消了文件夹选择');
-    } else {
-      showToast('错误', '无法访问文件夹: ' + e.message, 'error');
-      console.error('选择文件夹失败:', e);
-    }
-    return false;
-  }
-}
-
-// === 保存目录句柄到 IndexedDB ===
-async function saveDirectoryHandle(handle) {
-  const db = await openDB('TCGCardDB', 1, {
-    upgrade(db) {
-      if (!db.objectStoreNames.contains('directoryHandles')) {
-        db.createObjectStore('directoryHandles');
-      }
-    }
-  });
-  await db.put('directoryHandles', handle, 'imageDirectory');
-}
-
-// === 简单的 IndexedDB 封装 ===
-function openDB(name, version, upgradeCallback) {
-  return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
-    request.onerror = () => reject(request.error);
-    request.onsuccess = () => {
-      const db = request.result;
-      // 包装 db 对象，添加 get/put 方法
-      db.get = function(storeName, key) {
-        return new Promise((res, rej) => {
-          const tx = db.transaction(storeName, 'readonly');
-          const store = tx.objectStore(storeName);
-          const req = store.get(key);
-          req.onsuccess = () => res(req.result);
-          req.onerror = () => rej(req.error);
-        });
-      };
-      db.put = function(storeName, value, key) {
-        return new Promise((res, rej) => {
-          const tx = db.transaction(storeName, 'readwrite');
-          const store = tx.objectStore(storeName);
-          const req = store.put(value, key);
-          req.onsuccess = () => res(req.result);
-          req.onerror = () => rej(req.error);
-        });
-      };
-      resolve(db);
-    };
-    if (upgradeCallback) {
-      request.onupgradeneeded = (event) => {
-        upgradeCallback(event.target.result);
-      };
-    }
-  });
-}
-
-// === 保存图片到本地文件夹 ===
-async function saveImageToFile(file, fileName) {
-  if (!useFileSystem || !imageDirectoryHandle) {
-    throw new Error('文件系统未初始化');
-  }
-  
-  try {
-    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(file);
-    await writable.close();
-    return fileName;
-  } catch (e) {
-    console.error('保存图片失败:', e);
-    throw e;
-  }
-}
-
-// === 从本地文件夹读取图片 ===
-async function loadImageFromFile(fileName) {
-  if (!useFileSystem || !imageDirectoryHandle) {
-    return null;
-  }
-  
-  try {
-    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    return URL.createObjectURL(file);
-  } catch (e) {
-    console.warn('读取图片失败:', fileName, e);
-    return null;
-  }
-}
-
-// === 删除本地图片文件 ===
-async function deleteImageFile(fileName) {
-  if (!useFileSystem || !imageDirectoryHandle) {
-    return;
-  }
-  
-  try {
-    await imageDirectoryHandle.removeEntry(fileName);
-  } catch (e) {
-    console.warn('删除图片失败:', fileName, e);
-  }
 }
 
 // === 获取分类历史记录 ===
@@ -1486,7 +1319,7 @@ function openAddCardModal() {
       purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
       saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
       markedForDelete: false,
-      images: cardImagesList || [],  // 存储文件名数组
+      images: cardImagesBase64 || [],
       qty: parseInt(document.getElementById('cardQty').value) || 1,
       purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
       saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
@@ -1497,16 +1330,16 @@ function openAddCardModal() {
       salePrice: salePrice,
       saleCurrency: saleCurrency,
       isInStock: document.getElementById('isInStock')?.checked || false,
-      purchaseVouchers: purchaseVouchersList || [],  // 存储文件名数组
-      saleVouchers: saleVouchersList || []  // 存储文件名数组
+      purchaseVouchers: purchaseVouchersBase64 || [],
+      saleVouchers: saleVouchersBase64 || []
     });
     save();
     render();
     closeModal();
     // 清除图片数据
-    cardImagesList = [];
-    purchaseVouchersList = [];
-    saleVouchersList = [];
+    cardImagesBase64 = [];
+    purchaseVouchersBase64 = [];
+    saleVouchersBase64 = [];
     showToast('成功', '卡牌已添加');
   };
 }
@@ -3360,401 +3193,300 @@ function clearImage() {
   updateImagePreview(null);
 }
 
-// === 图片文件名存储（简化版，只支持文件系统）===
-let cardImagesList = []; // 存储文件名数组
-let purchaseVouchersList = [];
-let saleVouchersList = [];
+// === 多张卡牌图片处理 ===
+let cardImagesBase64 = [];
+let purchaseVouchersBase64 = [];
+let saleVouchersBase64 = [];
 
 // === 编辑页面状态变量 ===
-let editCardImagesList = [];
-let editPurchaseVouchersList = [];
-let editSaleVouchersList = [];
+let editCardImages = [];
+let editPurchaseVouchers = [];
+let editSaleVouchers = [];
 
-// 生成唯一的文件名
-function generateImageFileName(prefix = 'img') {
-  const timestamp = Date.now();
-  const random = Math.random().toString(36).substr(2, 9);
-  return `${prefix}_${timestamp}_${random}.jpg`;
-}
-
-// 检查文件系统是否可用
-async function checkFileSystem() {
-  if (!useFileSystem || !imageDirectoryHandle) {
-    showToast('提示', '请先选择图片存储文件夹', 'warning');
-    const success = await selectImageDirectory();
-    return success;
-  }
-  return true;
-}
-
-async function handleCardImagesUpload(input) {
+function handleCardImagesUpload(input) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  // 检查文件系统
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
-  
-  for (const file of files) {
+  files.forEach(file => {
     // 检查文件类型
     if (!file.type.startsWith('image/')) {
       showToast('错误', '请选择图片文件', 'error');
-      continue;
+      return;
     }
     
-    // 检查文件大小（限制为 10MB）
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('错误', '图片大小不能超过 10MB', 'error');
-      continue;
+    // 检查文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
     }
     
-    const fileName = generateImageFileName('card');
-    
-    try {
-      await saveImageToFile(file, fileName);
-      cardImagesList.push(fileName);
-      await updateCardImagesPreview();
-    } catch (e) {
-      showToast('错误', '保存图片失败: ' + e.message, 'error');
-      console.error(e);
-    }
-  }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      cardImagesBase64.push(e.target.result);
+      updateCardImagesPreview();
+    };
+    reader.readAsDataURL(file);
+  });
   
   // 清空input以便可以重复选择相同文件
   input.value = '';
 }
 
-async function updateCardImagesPreview() {
+function updateCardImagesPreview() {
   const previewDiv = document.getElementById('cardImagesPreview');
+  const emptyHint = document.getElementById('emptyImageHint');
   if (!previewDiv) return;
   
-  if (cardImagesList.length === 0) {
+  if (cardImagesBase64.length === 0) {
     previewDiv.innerHTML = `
       <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
         <i class="fa fa-image text-2xl mb-1 block"></i>
         暂无图片
       </div>
     `;
-    return;
-  }
-  
-  // 构建预览 HTML
-  let html = '';
-  for (let i = 0; i < cardImagesList.length; i++) {
-    const fileName = cardImagesList[i];
-    const imgSrc = useFileSystem ? await loadImageFromFile(fileName) : '';
-    
-    html += `
+  } else {
+    previewDiv.innerHTML = cardImagesBase64.map((img, index) => `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-        <img src="${imgSrc || ''}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="hidden w-full h-full items-center justify-center text-gray-400 text-xs bg-gray-100 dark:bg-gray-700">
-          <i class="fa fa-image text-xl"></i>
-        </div>
-        <button type="button" onclick="removeCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+        <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${index + 1}">
+        <button type="button" onclick="removeCardImage(${index})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
       </div>
-    `;
+    `).join('');
   }
-  previewDiv.innerHTML = html;
 }
 
-async function removeCardImage(index) {
-  if (!confirm('确定要删除这张卡牌图片吗？')) return;
-  
-  const fileName = cardImagesList[index];
-  if (fileName && useFileSystem) {
-    await deleteImageFile(fileName);
+function removeCardImage(index) {
+  if (!confirm('确定要删除这张卡牌图片吗？')) {
+    return;
   }
-  
-  cardImagesList.splice(index, 1);
-  await updateCardImagesPreview();
+  cardImagesBase64.splice(index, 1);
+  updateCardImagesPreview();
 }
 
-async function clearCardImages() {
-  if (cardImagesList.length === 0) return;
-  if (!confirm(`确定要清除所有卡牌图片吗？共 ${cardImagesList.length} 张`)) return;
-  
-  // 删除文件系统中的图片
-  for (const fileName of cardImagesList) {
-    await deleteImageFile(fileName);
+function clearCardImages() {
+  if (cardImagesBase64.length === 0) return;
+  if (!confirm(`确定要清除所有卡牌图片吗？共 ${cardImagesBase64.length} 张`)) {
+    return;
   }
-  
-  cardImagesList = [];
-  await updateCardImagesPreview();
+  cardImagesBase64 = [];
+  updateCardImagesPreview();
 }
 
-// === 凭证图片处理（简化版）===
-async function handleVoucherUpload(input, type) {
+// === 凭证图片处理 ===
+function handleVoucherUpload(input, type) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  // 检查文件系统
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
+  const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
   
-  const targetArray = type === 'purchase' ? purchaseVouchersList : saleVouchersList;
-  
-  for (const file of files) {
+  files.forEach(file => {
+    // 检查文件类型
     if (!file.type.startsWith('image/')) {
       showToast('错误', '请选择图片文件', 'error');
-      continue;
-    }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('错误', '图片大小不能超过 10MB', 'error');
-      continue;
+      return;
     }
     
-    const fileName = generateImageFileName(type === 'purchase' ? 'pv' : 'sv');
-    try {
-      await saveImageToFile(file, fileName);
-      targetArray.push(fileName);
-      await updateVoucherPreview(type);
-    } catch (e) {
-      showToast('错误', '保存凭证图片失败', 'error');
+    // 检查文件大小（限制为 2MB）
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
     }
-  }
+    
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      targetArray.push(e.target.result);
+      updateVoucherPreview(type);
+    };
+    reader.readAsDataURL(file);
+  });
   
+  // 清空input以便可以重复选择相同文件
   input.value = '';
 }
 
-async function updateVoucherPreview(type) {
-  const targetArray = type === 'purchase' ? purchaseVouchersList : saleVouchersList;
+function updateVoucherPreview(type) {
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
   const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
   const previewDiv = document.getElementById(previewId);
   if (!previewDiv) return;
   
   if (targetArray.length === 0) {
     previewDiv.innerHTML = '';
-    return;
-  }
-  
-  let html = '';
-  for (let i = 0; i < targetArray.length; i++) {
-    const fileName = targetArray[i];
-    const imgSrc = useFileSystem ? await loadImageFromFile(fileName) : '';
-    
-    html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc || ''}')">
-        <img src="${imgSrc || ''}" class="w-full h-full object-cover" alt="凭证${i + 1}" onerror="this.style.display='none'">
-        <button type="button" onclick="event.stopPropagation(); removeVoucher(${i}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+  } else {
+    previewDiv.innerHTML = targetArray.map((img, index) => `
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
+        <img src="${img}" class="w-full h-full object-cover" alt="凭证${index + 1}">
+        <button type="button" onclick="event.stopPropagation(); removeVoucher(${index}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
       </div>
-    `;
+    `).join('');
   }
-  previewDiv.innerHTML = html;
 }
 
-async function removeVoucher(index, type) {
-  if (!confirm('确定要删除这张凭证图片吗？')) return;
-  
-  const targetArray = type === 'purchase' ? purchaseVouchersList : saleVouchersList;
-  const fileName = targetArray[index];
-  if (fileName) await deleteImageFile(fileName);
-  
+function removeVoucher(index, type) {
+  if (!confirm('确定要删除这张凭证图片吗？')) {
+    return;
+  }
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
   targetArray.splice(index, 1);
-  await updateVoucherPreview(type);
+  updateVoucherPreview(type);
 }
 
-async function clearVouchers(type) {
-  const targetArray = type === 'purchase' ? purchaseVouchersList : saleVouchersList;
+function clearVouchers(type) {
+  const targetArray = type === 'purchase' ? purchaseVouchersBase64 : saleVouchersBase64;
   if (targetArray.length === 0) return;
-  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) return;
-  
-  for (const fileName of targetArray) {
-    await deleteImageFile(fileName);
+  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) {
+    return;
   }
-  
   if (type === 'purchase') {
-    purchaseVouchersList = [];
+    purchaseVouchersBase64 = [];
   } else {
-    saleVouchersList = [];
+    saleVouchersBase64 = [];
   }
-  await updateVoucherPreview(type);
+  updateVoucherPreview(type);
 }
 
-// === 编辑页面的图片处理函数（简化版）===
+// === 编辑页面的图片处理函数 ===
 
 // 处理编辑页面卡牌图片上传
-async function handleEditCardImagesUpload(input) {
+function handleEditCardImagesUpload(input) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
-  
-  for (const file of files) {
+  files.forEach(file => {
     if (!file.type.startsWith('image/')) {
       showToast('错误', '请选择图片文件', 'error');
-      continue;
+      return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('错误', '图片大小不能超过 10MB', 'error');
-      continue;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
     }
     
-    const fileName = generateImageFileName('card');
-    try {
-      await saveImageToFile(file, fileName);
-      editCardImagesList.push(fileName);
-      await updateEditCardImagesPreview();
-    } catch (e) {
-      showToast('错误', '保存图片失败', 'error');
-    }
-  }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      editCardImages.push(e.target.result);
+      updateEditCardImagesPreview();
+    };
+    reader.readAsDataURL(file);
+  });
   input.value = '';
 }
 
 // 更新编辑页面卡牌图片预览
-async function updateEditCardImagesPreview() {
+function updateEditCardImagesPreview() {
   const preview = document.getElementById('cardImagesPreview');
   if (!preview) return;
   
-  if (editCardImagesList.length === 0) {
+  if (editCardImages.length === 0) {
     preview.innerHTML = `
       <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
         <i class="fa fa-image text-2xl mb-1 block"></i>
         暂无图片
       </div>
     `;
-    return;
-  }
-  
-  let html = '';
-  for (let i = 0; i < editCardImagesList.length; i++) {
-    const fileName = editCardImagesList[i];
-    const imgSrc = useFileSystem ? await loadImageFromFile(fileName) : '';
-    
-    html += `
+  } else {
+    preview.innerHTML = editCardImages.map((img, idx) => `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-        <img src="${imgSrc || ''}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
-        <div class="hidden w-full h-full items-center justify-center text-gray-400 text-xs bg-gray-100 dark:bg-gray-700">
-          <i class="fa fa-image text-xl"></i>
-        </div>
-        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+        <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
+        <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
       </div>
-    `;
+    `).join('');
   }
-  preview.innerHTML = html;
 }
 
 // 删除编辑页面单张卡牌图片
-async function removeEditCardImage(index) {
-  if (!confirm('确定要删除这张卡牌图片吗？')) return;
-  
-  const fileName = editCardImagesList[index];
-  if (fileName) await deleteImageFile(fileName);
-  
-  editCardImagesList.splice(index, 1);
-  await updateEditCardImagesPreview();
+function removeEditCardImage(index) {
+  if (!confirm('确定要删除这张卡牌图片吗？')) {
+    return;
+  }
+  editCardImages.splice(index, 1);
+  updateEditCardImagesPreview();
 }
 
 // 清除编辑页面所有卡牌图片
-async function clearEditCardImages() {
-  if (editCardImagesList.length === 0) return;
-  if (!confirm(`确定要清除所有卡牌图片吗？共 ${editCardImagesList.length} 张`)) return;
-  
-  for (const fileName of editCardImagesList) {
-    await deleteImageFile(fileName);
+function clearEditCardImages() {
+  if (editCardImages.length === 0) return;
+  if (!confirm(`确定要清除所有卡牌图片吗？共 ${editCardImages.length} 张`)) {
+    return;
   }
-  
-  editCardImagesList = [];
-  await updateEditCardImagesPreview();
+  editCardImages = [];
+  updateEditCardImagesPreview();
 }
 
 // 处理编辑页面凭证上传
-async function handleEditVoucherUpload(input, type) {
+function handleEditVoucherUpload(input, type) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   
-  const targetArray = type === 'purchase' ? editPurchaseVouchersList : editSaleVouchersList;
-  
-  for (const file of files) {
+  files.forEach(file => {
     if (!file.type.startsWith('image/')) {
       showToast('错误', '请选择图片文件', 'error');
-      continue;
+      return;
     }
-    if (file.size > 10 * 1024 * 1024) {
-      showToast('错误', '图片大小不能超过 10MB', 'error');
-      continue;
+    if (file.size > 2 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 2MB', 'error');
+      return;
     }
     
-    const fileName = generateImageFileName(type === 'purchase' ? 'pv' : 'sv');
-    try {
-      await saveImageToFile(file, fileName);
-      targetArray.push(fileName);
-      await updateEditVoucherPreview(type);
-    } catch (e) {
-      showToast('错误', '保存凭证失败', 'error');
-    }
-  }
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      targetArray.push(e.target.result);
+      updateEditVoucherPreview(type);
+    };
+    reader.readAsDataURL(file);
+  });
   input.value = '';
 }
 
 // 更新编辑页面凭证预览
-async function updateEditVoucherPreview(type) {
+function updateEditVoucherPreview(type) {
   const previewId = type === 'purchase' ? 'purchaseVoucherPreview' : 'saleVoucherPreview';
   const preview = document.getElementById(previewId);
   if (!preview) return;
   
-  const targetArray = type === 'purchase' ? editPurchaseVouchersList : editSaleVouchersList;
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   
-  if (targetArray.length === 0) {
-    preview.innerHTML = '';
-    return;
-  }
-  
-  let html = '';
-  for (let i = 0; i < targetArray.length; i++) {
-    const fileName = targetArray[i];
-    const imgSrc = useFileSystem ? await loadImageFromFile(fileName) : '';
-    
-    html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc || ''}')">
-        <img src="${imgSrc || ''}" class="w-full h-full object-cover" alt="凭证${i + 1}" onerror="this.style.display='none'">
-        <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${i}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
-          <i class="fa fa-times"></i>
-        </button>
-      </div>
-    `;
-  }
-  preview.innerHTML = html;
+  preview.innerHTML = targetArray.map((img, idx) => `
+    <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
+      <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+      <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+        <i class="fa fa-times"></i>
+      </button>
+    </div>
+  `).join('');
 }
 
 // 删除编辑页面单张凭证
-async function removeEditVoucher(index, type) {
-  if (!confirm('确定要删除这张凭证图片吗？')) return;
-  
-  const targetArray = type === 'purchase' ? editPurchaseVouchersList : editSaleVouchersList;
-  const fileName = targetArray[index];
-  if (fileName) await deleteImageFile(fileName);
-  
+function removeEditVoucher(index, type) {
+  if (!confirm('确定要删除这张凭证图片吗？')) {
+    return;
+  }
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   targetArray.splice(index, 1);
-  await updateEditVoucherPreview(type);
+  updateEditVoucherPreview(type);
 }
 
 // 清除编辑页面所有凭证
-async function clearEditVouchers(type) {
-  const targetArray = type === 'purchase' ? editPurchaseVouchersList : editSaleVouchersList;
+function clearEditVouchers(type) {
+  const targetArray = type === 'purchase' ? editPurchaseVouchers : editSaleVouchers;
   if (targetArray.length === 0) return;
-  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) return;
-  
-  for (const fileName of targetArray) {
-    await deleteImageFile(fileName);
+  if (!confirm(`确定要清除所有${type === 'purchase' ? '购入' : '出售'}凭证图片吗？共 ${targetArray.length} 张`)) {
+    return;
   }
-  
   if (type === 'purchase') {
-    editPurchaseVouchersList = [];
+    editPurchaseVouchers = [];
   } else {
-    editSaleVouchersList = [];
+    editSaleVouchers = [];
   }
-  await updateEditVoucherPreview(type);
+  updateEditVoucherPreview(type);
 }
 
 // === 入库开关处理 ===
@@ -3804,108 +3536,11 @@ function handleGradingOrgChange(select) {
   }
 }
 
-// === 异步加载编辑表单的图片预览 ===
-async function loadEditCardImagesPreview() {
-  const previewDiv = document.getElementById('cardImagesPreview');
-  if (!previewDiv) return;
-  
-  if (editCardImagesList.length === 0) {
-    previewDiv.innerHTML = `
-      <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
-        <i class="fa fa-image text-2xl mb-1 block"></i>
-        暂无图片
-      </div>
-    `;
-    return;
-  }
-  
-  // 先显示占位符
-  let html = '';
-  for (let i = 0; i < editCardImagesList.length; i++) {
-    html += `
-      <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600" id="edit-img-${i}">
-        <div class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-          <i class="fa fa-spinner fa-spin text-gray-400"></i>
-        </div>
-        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
-          <i class="fa fa-times"></i>
-        </button>
-      </div>
-    `;
-  }
-  previewDiv.innerHTML = html;
-  
-  // 异步加载图片
-  for (let i = 0; i < editCardImagesList.length; i++) {
-    const fileName = editCardImagesList[i];
-    const imgElement = document.getElementById(`edit-img-${i}`);
-    if (!imgElement) continue;
-    
-    let imgSrc = fileName;
-    // 如果是文件名且使用文件系统，从文件系统加载
-    if (fileName && !fileName.startsWith('data:') && !fileName.startsWith('http') && useFileSystem) {
-      imgSrc = await loadImageFromFile(fileName) || '';
-    }
-    
-    if (imgSrc) {
-      imgElement.innerHTML = `
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.outerHTML='<div class=\\'w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700\\'><i class=\\'fa fa-image text-gray-400\\'></i></div>'">
-        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
-          <i class="fa fa-times"></i>
-        </button>
-      `;
-    } else {
-      imgElement.innerHTML = `
-        <div class="w-full h-full flex items-center justify-center bg-gray-100 dark:bg-gray-700">
-          <i class="fa fa-image text-gray-400"></i>
-        </div>
-        <button type="button" onclick="removeEditCardImage(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
-          <i class="fa fa-times"></i>
-        </button>
-      `;
-    }
-  }
-}
-
-// === 异步加载卡牌缩略图 ===
-async function loadCardThumbnail(cardIndex, imageRef, elementId) {
-  const element = document.getElementById(elementId);
-  if (!element) return;
-  
-  let imageUrl = imageRef;
-  
-  // 如果是文件名且使用文件系统，从文件系统加载
-  if (imageRef && !imageRef.startsWith('data:') && !imageRef.startsWith('http') && useFileSystem) {
-    imageUrl = await loadImageFromFile(imageRef);
-  }
-  
-  if (imageUrl) {
-    // 替换为图片
-    const card = cards[cardIndex];
-    const hasMultipleImages = card.images && card.images.length > 1;
-    const safeCardName = (card.name || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
-    const clickHandler = hasMultipleImages 
-      ? `showCardImagesModal(${cardIndex})` 
-      : `showImageModal('${imageRef}', '${safeCardName}')`;
-    const tooltip = hasMultipleImages 
-      ? `点击可查看所有图片 (${card.images.length}张)` 
-      : '点击可查看大图';
-    element.outerHTML = `<img src="${imageUrl}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="${clickHandler}" data-tooltip="${tooltip}" onerror="this.outerHTML='<div class=\\'w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center\\'><i class=\\'fa fa-image text-gray-300 text-[10px]\\'></i></div>'">`;
-  }
-}
-
-// === 显示图片大图（支持文件名）===
-async function showImageModal(imageSrc, cardName) {
-  // 如果 imageSrc 是文件名，从文件系统加载
-  let displaySrc = imageSrc;
-  if (imageSrc && !imageSrc.startsWith('data:') && !imageSrc.startsWith('http') && useFileSystem) {
-    const loadedSrc = await loadImageFromFile(imageSrc);
-    if (loadedSrc) displaySrc = loadedSrc;
-  }
-  
+// === 显示图片大图 ===
+function showImageModal(imageSrc, cardName) {
   const content = `
     <div class="flex flex-col items-center">
-      <img src="${displaySrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+      <img src="${imageSrc}" class="max-w-full max-h-[70vh] object-contain rounded-lg shadow-lg" alt="${cardName}">
       <p class="mt-4 text-lg font-medium text-gray-700 dark:text-gray-300">${cardName}</p>
       <button onclick="closeModal()" class="mt-4 px-6 py-2 bg-primary text-white rounded-lg hover:bg-primary/90 transition-colors">
         <i class="fa fa-times mr-1"></i>关闭
@@ -3915,32 +3550,20 @@ async function showImageModal(imageSrc, cardName) {
   showModal(content, '卡牌图片');
 }
 
-// === 显示卡牌多张图片（支持文件名）===
-async function showCardImagesModal(cardIndex) {
+// === 显示卡牌多张图片 ===
+function showCardImagesModal(cardIndex) {
   const card = cards[cardIndex];
   const images = card.images || (card.image ? [card.image] : []);
   
   if (images.length === 0) return;
   
-  // 预加载所有图片
-  const loadedImages = [];
-  for (let i = 0; i < images.length; i++) {
-    const img = images[i];
-    let src = img;
-    if (img && !img.startsWith('data:') && !img.startsWith('http') && useFileSystem) {
-      src = await loadImageFromFile(img) || img;
-    }
-    loadedImages.push(src);
-  }
-  
-  const safeCardName = (card.name || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
   const content = `
     <div class="flex flex-col items-center">
       <div class="flex flex-wrap gap-3 justify-center max-h-[60vh] overflow-y-auto p-2">
-        ${loadedImages.map((img, idx) => `
+        ${images.map((img, idx) => `
           <div class="relative group">
             <img src="${img}" class="w-32 h-40 object-cover rounded-lg shadow-md cursor-pointer hover:shadow-xl transition-shadow" 
-                 onclick="showImageModal('${img}', '${safeCardName} - 图片 ${idx + 1}')" alt="${safeCardName} ${idx + 1}" onerror="this.src='data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🖼️</text></svg>'">
+                 onclick="showImageModal('${img}', '${card.name} - 图片 ${idx + 1}')" alt="${card.name} ${idx + 1}">
             <span class="absolute bottom-1 right-1 bg-black/50 text-white text-xs px-2 py-0.5 rounded">${idx + 1}/${images.length}</span>
           </div>
         `).join('')}
@@ -4292,21 +3915,13 @@ function render(data = null) {
     const marketPriceConverted = ((card.marketPrice || 0) * getRate(card.marketCurrency)).toFixed(0);
     const salePriceConverted = ((card.salePrice || 0) * getRate(card.saleCurrency)).toFixed(0);
     
-    // 准备图片HTML（使用占位符，稍后异步加载）
-    const hasImages = card.images && card.images.length > 0;
-    const hasImage = card.image;
-    const imageId = `card-thumb-${originalIndex}`;
-    
-    const safeCardName = (card.name || '').replace(/'/g, "\\'").replace(/"/g, '\\"');
     tr.innerHTML = `
       <td class="px-2 py-1.5">
         <input type="checkbox" class="card-checkbox rounded text-primary focus:ring-primary cursor-pointer w-3.5 h-3.5" data-id="${originalIndex}" data-tooltip="勾选此卡牌进行批量操作，如批量删除。">
       </td>
       <td class="px-2 py-1.5">
         <div class="flex items-center gap-2">
-          ${hasImages ? `<div id="${imageId}" class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform" onclick="showCardImagesModal(${originalIndex})" data-tooltip="点击可查看所有图片 (${card.images.length}张)"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>` : 
-            (hasImage ? `<div id="${imageId}" class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${safeCardName}')" data-tooltip="点击可查看大图"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>` : 
-            '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>')}
+          ${card.images && card.images.length > 0 ? `<img src="${card.images[0]}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showCardImagesModal(${originalIndex})" data-tooltip="点击可查看所有图片 (${card.images.length}张)">` : (card.image ? `<img src="${card.image}" class="w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform" onclick="showImageModal('${card.image}', '${card.name}')" data-tooltip="点击可查看大图">` : '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded border border-gray-200 dark:border-gray-600 flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>')}
           <span class="font-medium text-xs truncate max-w-[100px]" title="${card.name || '-'}">${card.name || '-'}</span>
         </div>
       </td>
@@ -4342,12 +3957,6 @@ function render(data = null) {
         </div>
       </td>
     `;
-    
-    // 异步加载图片
-    if (hasImages || hasImage) {
-      loadCardThumbnail(originalIndex, hasImages ? card.images[0] : card.image, imageId);
-    }
-    
     tbody.appendChild(tr);
   });
   
@@ -4401,10 +4010,10 @@ function editCard(index) {
   currentCard = index;
   editingCardIndex = index; // 保存编辑索引，用于查价后恢复
   
-  // 初始化编辑状态变量（使用文件名数组）
-  editCardImagesList = card.images ? [...card.images] : (card.image ? [card.image] : []);
-  editPurchaseVouchersList = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
-  editSaleVouchersList = card.saleVouchers ? [...card.saleVouchers] : [];
+  // 初始化编辑状态变量
+  editCardImages = card.images ? [...card.images] : (card.image ? [card.image] : []);
+  editPurchaseVouchers = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
+  editSaleVouchers = card.saleVouchers ? [...card.saleVouchers] : [];
   
   const content = `
     <form id="cardForm" class="space-y-3">
@@ -4659,7 +4268,19 @@ function editCard(index) {
         <label class="block text-sm font-medium mb-1">卡牌照片 <span class="text-xs text-gray-400">(可添加多张)</span></label>
         <div class="flex flex-col gap-3">
           <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
-            <!-- 图片预览将由 JavaScript 异步加载 -->
+            ${card.images && card.images.length > 0 ? card.images.map((img, idx) => `
+              <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
+                <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            `).join('') : `
+              <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+                <i class="fa fa-image text-2xl mb-1 block"></i>
+                暂无图片
+              </div>
+            `}
           </div>
           <div class="flex gap-2">
             <input type="file" id="cardImageInput" accept="image/*" multiple class="hidden" onchange="handleEditCardImagesUpload(this)">
@@ -4682,9 +4303,6 @@ function editCard(index) {
   `;
   
   showModal(content, '编辑卡牌');
-  
-  // 异步加载编辑表单的图片预览
-  setTimeout(() => loadEditCardImagesPreview(), 0);
   
   document.getElementById('cardForm').onsubmit = function(e) {
     e.preventDefault();
@@ -4751,7 +4369,7 @@ function editCard(index) {
         purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
         saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
         markedForDelete: cards[index].markedForDelete,
-        images: editCardImagesList.length > 0 ? editCardImagesList : existingImages,
+        images: editCardImages.length > 0 ? editCardImages : existingImages,
         qty: parseInt(document.getElementById('cardQty').value) || 1,
         purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
         saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
@@ -4762,16 +4380,16 @@ function editCard(index) {
         salePrice: salePrice,
         saleCurrency: saleCurrency,
         isInStock: document.getElementById('isInStock')?.checked || false,
-        purchaseVouchers: editPurchaseVouchersList.length > 0 ? editPurchaseVouchersList : existingPurchaseVouchers,
-        saleVouchers: editSaleVouchersList.length > 0 ? editSaleVouchersList : existingSaleVouchers
+        purchaseVouchers: editPurchaseVouchers.length > 0 ? editPurchaseVouchers : existingPurchaseVouchers,
+        saleVouchers: editSaleVouchers.length > 0 ? editSaleVouchers : existingSaleVouchers
       };
       save();
       render();
       closeModal();
       // 清除编辑状态
-      editCardImagesList = [];
-      editPurchaseVouchersList = [];
-      editSaleVouchersList = [];
+      editCardImages = [];
+      editPurchaseVouchers = [];
+      editSaleVouchers = [];
       showToast('成功', '卡牌已更新');
     } catch (error) {
       console.error('保存卡牌时出错:', error);

@@ -473,42 +473,7 @@
             </div>
           </div>
           
-          <!-- 互动宠物 - 海贼王金句 -->
-          <div class="mt-4 flex justify-center items-center gap-3">
-            <div id="onePiecePet" class="relative cursor-pointer group" onmouseenter="petInteract()" onclick="petClick()">
-              <!-- 宠物形象 - CSS绘制前进梅利号 -->
-              <div class="w-20 h-20 relative animate-bounce-slow transition-transform duration-300 group-hover:scale-110 group-hover:-translate-y-1">
-                <!-- 羊头主体 -->
-                <div class="absolute top-2 left-1/2 -translate-x-1/2 w-14 h-12 bg-white rounded-full shadow-lg border-2 border-gray-100"></div>
-                <!-- 左耳/角 -->
-                <div class="absolute top-0 left-2 w-6 h-7 bg-[#8B7355] rounded-full rotate-[-25deg] origin-bottom-right"></div>
-                <!-- 右耳/角 -->
-                <div class="absolute top-0 right-2 w-6 h-7 bg-[#8B7355] rounded-full rotate-[25deg] origin-bottom-left"></div>
-                <!-- 眼睛 -->
-                <div class="absolute top-4 left-4 w-3.5 h-4.5 bg-black rounded-full">
-                  <div class="absolute top-1 right-1 w-1.5 h-2 bg-white rounded-full"></div>
-                </div>
-                <!-- 鼻子嘴巴区域 -->
-                <div class="absolute top-7 left-1/2 -translate-x-1/2 w-10 h-6">
-                  <!-- 鼻孔 -->
-                  <div class="absolute top-0 left-2.5 w-1 h-1 bg-gray-400 rounded-full"></div>
-                  <div class="absolute top-0 right-2.5 w-1 h-1 bg-gray-400 rounded-full"></div>
-                  <!-- 微笑嘴巴 -->
-                  <div class="absolute top-2.5 left-1/2 -translate-x-1/2 w-5 h-2.5 border-b-2 border-gray-600 rounded-full"></div>
-                </div>
-                <!-- 脖子 -->
-                <div class="absolute -bottom-1 left-1/2 -translate-x-1/2 w-10 h-5 bg-gray-300 rounded-b-xl"></div>
-              </div>
-              
-              <!-- 金句气泡 -->
-              <div id="quoteBubble" class="absolute -top-2 left-full ml-2 w-40 bg-white dark:bg-gray-700 rounded-lg p-2 shadow-lg opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
-                <div class="text-[10px] text-gray-700 dark:text-gray-300 leading-tight" id="quoteText">
-                  我是要成为海贼王的男人！
-                </div>
-                <div class="absolute left-0 top-1/2 -translate-x-1 -translate-y-1/2 w-2 h-2 bg-white dark:bg-gray-700 rotate-45"></div>
-              </div>
-            </div>
-          </div>
+
         </div>
       </div>
       
@@ -1802,81 +1767,7 @@ function confirmMergeGroup() {
   render();
 }
 
-// === 海贼王金句数组 ===
-const onePieceQuotes = [
-  "我是要成为海贼王的男人！",
-  "人的梦想，是不会终结的！",
-  "我不是天生的王者，但我骨子里流动着不让我低头的血液。",
-  "如果放弃，我将终身遗憾。",
-  "痛苦的时候不能在一起的话，那还算什么伙伴。",
-  "总有一天，我会聚集一群不输给这些人的伙伴。",
-  "我的命是你的，我的剑也是你的。",
-  "背上的伤痕是剑士的耻辱。",
-  "能原谅女人谎言的，才是真正的男人。",
-  "为了路飞，我心甘情愿成为真正的怪物。",
-  "将过去和羁绊全部丢弃，不要吝惜那为了梦想流下的泪水。",
-  "正义必胜吗？当然，胜利的就是正义。",
-  "不知所措，才是人生。",
-  "弱者连选择死亡的权利都没有。",
-  "我要成为世界第一的剑豪！"
-];
 
-let currentQuoteIndex = 0;
-let petQuoteInterval;
-
-// === 宠物互动 - 鼠标进入 ===
-function petInteract() {
-  const pet = document.querySelector('#onePiecePet > div > div:first-child');
-  if (pet) {
-    pet.classList.remove('animate-bounce-slow');
-    pet.classList.add('animate-shake');
-    setTimeout(() => {
-      pet.classList.remove('animate-shake');
-      pet.classList.add('animate-bounce-slow');
-    }, 500);
-  }
-}
-
-// === 宠物点击 ===
-function petClick() {
-  const pet = document.querySelector('#onePiecePet > div > div:first-child');
-  const quoteText = document.getElementById('quoteText');
-  
-  // 跳跃动画
-  if (pet) {
-    pet.classList.remove('animate-bounce-slow');
-    pet.classList.add('animate-jump');
-    setTimeout(() => {
-      pet.classList.remove('animate-jump');
-      pet.classList.add('animate-bounce-slow');
-    }, 600);
-  }
-  
-  // 切换金句
-  currentQuoteIndex = (currentQuoteIndex + 1) % onePieceQuotes.length;
-  if (quoteText) {
-    quoteText.style.opacity = '0';
-    setTimeout(() => {
-      quoteText.textContent = onePieceQuotes[currentQuoteIndex];
-      quoteText.style.opacity = '1';
-    }, 200);
-  }
-}
-
-// === 自动轮播金句 ===
-function startPetQuoteRotation() {
-  petQuoteInterval = setInterval(() => {
-    const quoteText = document.getElementById('quoteText');
-    if (quoteText) {
-      currentQuoteIndex = (currentQuoteIndex + 1) % onePieceQuotes.length;
-      quoteText.style.opacity = '0';
-      setTimeout(() => {
-        quoteText.textContent = onePieceQuotes[currentQuoteIndex];
-        quoteText.style.opacity = '1';
-      }, 300);
-    }
-  }, 8000); // 每8秒切换一次
-}
 
 // === 显示使用说明 ===
 function showHelp() {
@@ -1978,7 +1869,6 @@ function showHelp() {
         </h3>
         <ul class="space-y-1 text-xs">
           <li>• 鼠标悬停在按钮上可查看功能提示</li>
-          <li>• 点击宠物可切换海贼王金句</li>
           <li>• 表格支持按名称、价格、数量排序</li>
           <li>• 勾选卡牌可进行批量操作</li>
         </ul>
@@ -4718,9 +4608,6 @@ function loadSampleData() {
 // === 立即初始化 ===
 // 由于脚本在body末尾，DOM已经加载完成
 initApp();
-
-// 启动宠物金句轮播
-startPetQuoteRotation();
 
 // 检查并应用保存的自定义背景
 const savedBackground = localStorage.getItem('tcgCustomBackground');

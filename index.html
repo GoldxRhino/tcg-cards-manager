@@ -754,25 +754,10 @@ async function checkAndPromptImageFolder() {
     return;
   }
   
-  // 如果还没有设置文件夹，询问用户是否设置
+  // 只显示提示信息，不自动弹出文件夹选择（受浏览器安全限制）
+  // 用户需要手动点击按钮来设置文件夹
   if (!localStorage.getItem('imageFolderPrompted')) {
-    const shouldSet = confirm(`🎴 TCG卡牌管理工具
-
-为了更好地管理您的卡牌图片，建议设置一个本地文件夹来存储图片。
-
-📁 优势：
-• 图片保存在您的电脑上，不占用浏览器存储空间
-• 支持更大的图片（最大10MB）
-• 即使清除浏览器数据，图片也不会丢失
-• 后续更新后可自动检索
-
-是否现在设置图片存储文件夹？`);
-    
-    if (shouldSet) {
-      await selectImageDirectory();
-    }
-    
-    // 标记已提示过
+    showToast('提示', '💡 点击"卡牌收藏"旁的文件夹按钮可设置本地图片存储', 'info');
     localStorage.setItem('imageFolderPrompted', 'true');
   }
 }

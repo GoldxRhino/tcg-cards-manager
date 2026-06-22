@@ -903,13 +903,84 @@ async function saveDirectoryHandle(handle) {
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');
       }
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images');
+      }
     }
   });
   await db.put('directoryHandles', handle, 'imageDirectory');
 }
 
+// === 保存图片到 IndexedDB（备份）===
+async function saveImageToIndexedDB(file, fileName) {
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const db = await openDB('TCGCardDB', 2, {
+      upgrade(db) {
+        if (!db.objectStoreNames.contains('images')) {
+          db.createObjectStore('images');
+        }
+      }
+    });
+    await db.put('images', arrayBuffer, fileName);
+    console.log('[DEBUG] saveImageToIndexedDB - 图片备份成功:', fileName);
+  } catch (e) {
+    console.error('[DEBUG] saveImageToIndexedDB - 备份失败:', e);
+  }
+}
+
+// === 从 IndexedDB 读取图片 ===
+async function loadImageFromIndexedDB(fileName) {
+  try {
+    const db = await openDB('TCGCardDB', 2);
+    const arrayBuffer = await db.get('images', fileName);
+    if (arrayBuffer) {
+      const blob = new Blob([arrayBuffer]);
+      const url = URL.createObjectURL(blob);
+      console.log('[DEBUG] loadImageFromIndexedDB - 从备份加载成功:', fileName);
+      return url;
+    }
+    console.log('[DEBUG] loadImageFromIndexedDB - 备份中不存在:', fileName);
+    return null;
+  } catch (e) {
+    console.error('[DEBUG] loadImageFromIndexedDB - 读取失败:', e);
+    return null;
+  }
+}
+
+// === 从 IndexedDB 删除图片备份 ===
+async function deleteImageFromIndexedDB(fileName) {
+  try {
+    const db = await openDB('TCGCardDB', 2);
+    await db.delete('images', fileName);
+    console.log('[DEBUG] deleteImageFromIndexedDB - 删除备份成功:', fileName);
+  } catch (e) {
+    console.error('[DEBUG] deleteImageFromIndexedDB - 删除失败:', e);
+  }
+}
+
 // === 简单的 IndexedDB 封装 ===
-function openDB(name, version, upgradeCallback) {
+async function openDB(name, version, upgradeCallback) {
+  // 先检查是否有版本冲突
+  const databases = await indexedDB.databases();
+  const existingDb = databases.find(db => db.name === name);
+  
+  if (existingDb && existingDb.version > version) {
+    console.log('[DEBUG] openDB - 检测到版本冲突，现有版本:', existingDb.version, '请求版本:', version);
+    // 删除旧数据库
+    await new Promise((resolve, reject) => {
+      const deleteReq = indexedDB.deleteDatabase(name);
+      deleteReq.onsuccess = () => {
+        console.log('[DEBUG] openDB - 旧数据库已删除');
+        resolve();
+      };
+      deleteReq.onerror = () => {
+        console.error('[DEBUG] openDB - 删除旧数据库失败:', deleteReq.error);
+        reject(deleteReq.error);
+      };
+    });
+  }
+  
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, version);
     
@@ -931,15 +1002,9 @@ function openDB(name, version, upgradeCallback) {
       // 包装 db 对象，添加 get/put 方法
       db.get = function(storeName, key) {
         return new Promise((res, rej) => {
-          // 检查 store 是否存在
           if (!db.objectStoreNames.contains(storeName)) {
-            console.log('[DEBUG] openDB - store 不存在，需要升级:', storeName);
-            // 关闭当前连接，用新版本重新打开
-            db.close();
-            const newVersion = indexedDB.cmp ? indexedDB.cmp(version, db.version) > 0 ? version : db.version + 1 : db.version + 1;
-            openDB(name, newVersion, upgradeCallback).then(newDb => {
-              newDb.get(storeName, key).then(res).catch(rej);
-            }).catch(rej);
+            console.log('[DEBUG] openDB - store 不存在:', storeName);
+            res(null);
             return;
           }
           
@@ -953,15 +1018,9 @@ function openDB(name, version, upgradeCallback) {
       
       db.put = function(storeName, value, key) {
         return new Promise((res, rej) => {
-          // 检查 store 是否存在
           if (!db.objectStoreNames.contains(storeName)) {
-            console.log('[DEBUG] openDB - store 不存在，需要升级:', storeName);
-            // 关闭当前连接，用新版本重新打开
-            db.close();
-            const newVersion = indexedDB.cmp ? indexedDB.cmp(version, db.version) > 0 ? version : db.version + 1 : db.version + 1;
-            openDB(name, newVersion, upgradeCallback).then(newDb => {
-              newDb.put(storeName, value, key).then(res).catch(rej);
-            }).catch(rej);
+            console.log('[DEBUG] openDB - store 不存在:', storeName);
+            rej(new Error('Store not found: ' + storeName));
             return;
           }
           
@@ -973,65 +1032,91 @@ function openDB(name, version, upgradeCallback) {
         });
       };
       
+      db.delete = function(storeName, key) {
+        return new Promise((res, rej) => {
+          if (!db.objectStoreNames.contains(storeName)) {
+            res();
+            return;
+          }
+          
+          const tx = db.transaction(storeName, 'readwrite');
+          const store = tx.objectStore(storeName);
+          const req = store.delete(key);
+          req.onsuccess = () => res();
+          req.onerror = () => rej(req.error);
+        });
+      };
+      
       resolve(db);
     };
   });
 }
 
-// === 保存图片到本地文件夹 ===
+// === 保存图片（混合存储：文件系统 + IndexedDB 备份）===
 async function saveImageToFile(file, fileName) {
   console.log('[DEBUG] saveImageToFile - 开始保存图片:', { useFileSystem, imageDirectoryHandle, fileName });
   
-  if (!useFileSystem || !imageDirectoryHandle) {
-    console.error('[DEBUG] saveImageToFile - 文件系统未初始化');
-    throw new Error('文件系统未初始化');
+  // 首先备份到 IndexedDB（无论文件系统是否可用）
+  await saveImageToIndexedDB(file, fileName);
+  
+  // 如果文件系统可用，同时保存到本地文件夹
+  if (useFileSystem && imageDirectoryHandle) {
+    try {
+      const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
+      const writable = await fileHandle.createWritable();
+      await writable.write(file);
+      await writable.close();
+      console.log('[DEBUG] saveImageToFile - 图片保存到文件夹成功:', fileName);
+    } catch (e) {
+      console.error('[DEBUG] saveImageToFile - 保存到文件夹失败:', e);
+      // 文件夹保存失败不影响主流程，图片已备份到 IndexedDB
+    }
   }
   
-  try {
-    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
-    const writable = await fileHandle.createWritable();
-    await writable.write(file);
-    await writable.close();
-    console.log('[DEBUG] saveImageToFile - 图片保存成功:', fileName);
-    return fileName;
-  } catch (e) {
-    console.error('[DEBUG] saveImageToFile - 保存图片失败:', e);
-    throw e;
-  }
+  return fileName;
 }
 
-// === 从本地文件夹读取图片 ===
+// === 加载图片（智能切换：优先文件系统，失败则用 IndexedDB 备份）===
 async function loadImageFromFile(fileName) {
   console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, imageDirectoryHandle, fileName });
   
-  if (!useFileSystem || !imageDirectoryHandle) {
-    console.log('[DEBUG] loadImageFromFile - 文件系统未初始化，返回 null');
-    return null;
+  // 优先尝试从文件系统加载
+  if (useFileSystem && imageDirectoryHandle) {
+    try {
+      const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
+      const file = await fileHandle.getFile();
+      const url = URL.createObjectURL(file);
+      console.log('[DEBUG] loadImageFromFile - 从文件夹加载成功:', fileName);
+      return url;
+    } catch (e) {
+      console.warn('[DEBUG] loadImageFromFile - 从文件夹加载失败，尝试从备份加载:', e.message);
+    }
   }
   
-  try {
-    const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
-    const file = await fileHandle.getFile();
-    const url = URL.createObjectURL(file);
-    console.log('[DEBUG] loadImageFromFile - 图片加载成功:', fileName);
-    return url;
-  } catch (e) {
-    console.error('[DEBUG] loadImageFromFile - 读取图片失败:', fileName, e);
-    return null;
+  // 文件系统不可用或加载失败，尝试从 IndexedDB 备份加载
+  const backupUrl = await loadImageFromIndexedDB(fileName);
+  if (backupUrl) {
+    return backupUrl;
   }
+  
+  console.log('[DEBUG] loadImageFromFile - 所有来源都无法加载:', fileName);
+  return null;
 }
 
-// === 删除本地图片文件 ===
+// === 删除图片（同时删除文件夹和 IndexedDB 备份）===
 async function deleteImageFile(fileName) {
-  if (!useFileSystem || !imageDirectoryHandle) {
-    return;
+  // 删除文件夹中的图片
+  if (useFileSystem && imageDirectoryHandle) {
+    try {
+      await imageDirectoryHandle.removeEntry(fileName);
+      console.log('[DEBUG] deleteImageFile - 从文件夹删除成功:', fileName);
+    } catch (e) {
+      console.warn('[DEBUG] deleteImageFile - 从文件夹删除失败:', fileName, e);
+    }
   }
   
-  try {
-    await imageDirectoryHandle.removeEntry(fileName);
-  } catch (e) {
-    console.warn('删除图片失败:', fileName, e);
-  }
+  // 删除 IndexedDB 备份
+  await deleteImageFromIndexedDB(fileName);
 }
 
 // === 验证文件系统是否可用 ===
@@ -1060,15 +1145,20 @@ async function validateFileSystem() {
 }
 
 // === 检查文件系统 ===
-async function checkFileSystem() {
-  console.log('[DEBUG] checkFileSystem - 检查文件系统:', { useFileSystem, imageDirectoryHandle });
+async function checkFileSystem(requireFs = false) {
+  console.log('[DEBUG] checkFileSystem - 检查文件系统:', { useFileSystem, imageDirectoryHandle, requireFs });
   
   // 首先验证现有的文件系统句柄
   if (useFileSystem && imageDirectoryHandle) {
     const isValid = await validateFileSystem();
     if (!isValid) {
-      showToast('提示', '图片存储文件夹访问失效，请重新设置', 'warning');
+      showToast('提示', '图片存储文件夹访问失效，图片将仅保存在浏览器中', 'warning');
     }
+  }
+  
+  // 如果不强制要求文件系统，则直接返回成功（图片会保存到 IndexedDB）
+  if (!requireFs) {
+    return true;
   }
   
   if (!useFileSystem || !imageDirectoryHandle) {
@@ -3516,9 +3606,8 @@ async function handleCardImagesUpload(input) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  // 检查文件系统
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
+  // 不强制要求文件系统，图片会保存到 IndexedDB（如果文件系统可用也会保存到文件夹）
+  await checkFileSystem(false);
   
   for (const file of files) {
     // 检查文件类型
@@ -3567,10 +3656,8 @@ async function updateCardImagesPreview() {
   let html = '';
   for (let i = 0; i < cardImagesList.length; i++) {
     const fileName = cardImagesList[i];
-    let imgSrc = '';
-    if (useFileSystem) {
-      imgSrc = await loadImageFromFile(fileName) || '';
-    }
+    // 从文件系统或 IndexedDB 加载图片
+    const imgSrc = await loadImageFromFile(fileName) || '';
     
     html += `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
@@ -3614,9 +3701,8 @@ async function handleVoucherUpload(input, type) {
   const files = Array.from(input.files);
   if (files.length === 0) return;
   
-  // 检查文件系统
-  const fsReady = await checkFileSystem();
-  if (!fsReady) return;
+  // 不强制要求文件系统，图片会保存到 IndexedDB（如果文件系统可用也会保存到文件夹）
+  await checkFileSystem(false);
   
   const targetArray = type === 'purchase' ? purchaseVouchersList : saleVouchersList;
   
@@ -3657,10 +3743,8 @@ async function updateVoucherPreview(type) {
   let html = '';
   for (let i = 0; i < targetArray.length; i++) {
     const fileName = targetArray[i];
-    let imgSrc = '';
-    if (useFileSystem) {
-      imgSrc = await loadImageFromFile(fileName) || '';
-    }
+    // 从文件系统或 IndexedDB 加载图片
+    const imgSrc = await loadImageFromFile(fileName) || '';
     
     html += `
       <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">

@@ -724,8 +724,50 @@ function initApp() {
   // 确保已删除数量正确显示
   updateDeletedCount();
   
-  // 初始化文件系统（如果之前已授权）
+  // 初始化文件系统（如果之前已授权），并检查是否需要提示用户设置
   initFileSystem();
+  
+  // 延迟检查并提醒用户设置图片文件夹
+  setTimeout(() => {
+    checkAndPromptImageFolder();
+  }, 1500);
+}
+
+// === 检查并提示用户设置图片文件夹 ===
+async function checkAndPromptImageFolder() {
+  // 检查浏览器是否支持 File System Access API
+  if (!('showDirectoryPicker' in window)) {
+    showToast('提示', '当前浏览器不支持本地文件夹存储功能，图片将保存在浏览器缓存中', 'info');
+    return;
+  }
+  
+  // 如果已经设置过文件夹，显示提示
+  if (useFileSystem && imageDirectoryHandle) {
+    showToast('提示', '图片存储文件夹已设置，所有图片将保存在本地', 'success');
+    return;
+  }
+  
+  // 如果还没有设置文件夹，询问用户是否设置
+  if (!localStorage.getItem('imageFolderPrompted')) {
+    const shouldSet = confirm(`🎴 TCG卡牌管理工具
+
+为了更好地管理您的卡牌图片，建议设置一个本地文件夹来存储图片。
+
+📁 优势：
+• 图片保存在您的电脑上，不占用浏览器存储空间
+• 支持更大的图片（最大10MB）
+• 即使清除浏览器数据，图片也不会丢失
+• 后续更新后可自动检索
+
+是否现在设置图片存储文件夹？`);
+    
+    if (shouldSet) {
+      await selectImageDirectory();
+    }
+    
+    // 标记已提示过
+    localStorage.setItem('imageFolderPrompted', 'true');
+  }
 }
 
 // === 初始化文件系统 ===
@@ -779,7 +821,7 @@ async function selectImageDirectory() {
     // 保存句柄到 IndexedDB
     await saveDirectoryHandle(imageDir);
     
-    showToast('成功', '图片文件夹已设置：' + IMAGE_DIR_NAME);
+    showToast('成功', `✅ 图片文件夹已设置！\n\n所有卡牌图片将保存在：\n${dirHandle.name}/${IMAGE_DIR_NAME}\n\n后续访问将自动检索此文件夹，无需重复设置。`, 'success');
     return true;
   } catch (e) {
     if (e.name === 'AbortError') {

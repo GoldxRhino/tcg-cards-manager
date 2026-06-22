@@ -765,7 +765,7 @@ async function checkAndPromptImageFolder() {
 async function initFileSystem() {
   // 检查浏览器是否支持 File System Access API
   if (!('showDirectoryPicker' in window)) {
-    console.log('浏览器不支持 File System Access API');
+    console.log('[DEBUG] 文件系统 API 不支持');
     return;
   }
   
@@ -773,55 +773,70 @@ async function initFileSystem() {
   try {
     const db = await openDB('TCGCardDB', 2);
     const handle = await db.get('directoryHandles', 'imageDirectory');
+    console.log('[DEBUG] initFileSystem - 从 IndexedDB 获取句柄:', handle ? '成功' : '失败');
+    
     if (handle) {
       // 验证权限
       const permission = await handle.queryPermission({ mode: 'readwrite' });
+      console.log('[DEBUG] initFileSystem - 权限验证结果:', permission);
+      
       if (permission === 'granted') {
         imageDirectoryHandle = handle;
         useFileSystem = true;
-        console.log('已恢复图片文件夹访问权限');
+        console.log('[DEBUG] initFileSystem - 成功恢复文件系统访问');
         showToast('提示', '图片将保存到本地文件夹', 'info');
         // 更新按钮状态
         updateStorageButton();
+      } else {
+        console.log('[DEBUG] initFileSystem - 权限未授予:', permission);
       }
+    } else {
+      console.log('[DEBUG] initFileSystem - IndexedDB 中没有存储的目录句柄');
     }
   } catch (e) {
-    console.log('无法恢复文件系统访问:', e);
+    console.error('[DEBUG] initFileSystem - 错误:', e);
   }
 }
 
 // === 选择图片存储文件夹 ===
 async function selectImageDirectory() {
   try {
+    console.log('[DEBUG] selectImageDirectory - 开始选择文件夹');
+    
     // 请求用户选择文件夹
     const dirHandle = await window.showDirectoryPicker({
       mode: 'readwrite',
       startIn: 'downloads'
     });
+    console.log('[DEBUG] selectImageDirectory - 用户选择了文件夹:', dirHandle.name);
     
     // 创建或获取 tcg-card-images 子文件夹
     let imageDir;
     try {
       imageDir = await dirHandle.getDirectoryHandle(IMAGE_DIR_NAME, { create: true });
+      console.log('[DEBUG] selectImageDirectory - 创建/获取子文件夹成功:', IMAGE_DIR_NAME);
     } catch (e) {
+      console.error('[DEBUG] selectImageDirectory - 创建子文件夹失败:', e);
       showToast('错误', '无法创建图片文件夹', 'error');
       return false;
     }
     
     imageDirectoryHandle = imageDir;
     useFileSystem = true;
+    console.log('[DEBUG] selectImageDirectory - 文件系统状态已更新:', { useFileSystem, imageDirectoryHandle });
     
     // 保存句柄到 IndexedDB
     await saveDirectoryHandle(imageDir);
+    console.log('[DEBUG] selectImageDirectory - 目录句柄已保存到 IndexedDB');
     
     showToast('成功', `✅ 图片文件夹已设置！\n\n所有卡牌图片将保存在：\n${dirHandle.name}/${IMAGE_DIR_NAME}\n\n后续访问将自动检索此文件夹，无需重复设置。`, 'success');
     return true;
   } catch (e) {
     if (e.name === 'AbortError') {
-      console.log('用户取消了文件夹选择');
+      console.log('[DEBUG] selectImageDirectory - 用户取消了文件夹选择');
     } else {
+      console.error('[DEBUG] selectImageDirectory - 错误:', e);
       showToast('错误', '无法访问文件夹: ' + e.message, 'error');
-      console.error('选择文件夹失败:', e);
     }
     return false;
   }
@@ -918,7 +933,10 @@ function openDB(name, version, upgradeCallback) {
 
 // === 保存图片到本地文件夹 ===
 async function saveImageToFile(file, fileName) {
+  console.log('[DEBUG] saveImageToFile - 开始保存图片:', { useFileSystem, imageDirectoryHandle, fileName });
+  
   if (!useFileSystem || !imageDirectoryHandle) {
+    console.error('[DEBUG] saveImageToFile - 文件系统未初始化');
     throw new Error('文件系统未初始化');
   }
   
@@ -927,25 +945,31 @@ async function saveImageToFile(file, fileName) {
     const writable = await fileHandle.createWritable();
     await writable.write(file);
     await writable.close();
+    console.log('[DEBUG] saveImageToFile - 图片保存成功:', fileName);
     return fileName;
   } catch (e) {
-    console.error('保存图片失败:', e);
+    console.error('[DEBUG] saveImageToFile - 保存图片失败:', e);
     throw e;
   }
 }
 
 // === 从本地文件夹读取图片 ===
 async function loadImageFromFile(fileName) {
+  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, imageDirectoryHandle, fileName });
+  
   if (!useFileSystem || !imageDirectoryHandle) {
+    console.log('[DEBUG] loadImageFromFile - 文件系统未初始化，返回 null');
     return null;
   }
   
   try {
     const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
     const file = await fileHandle.getFile();
-    return URL.createObjectURL(file);
+    const url = URL.createObjectURL(file);
+    console.log('[DEBUG] loadImageFromFile - 图片加载成功:', fileName);
+    return url;
   } catch (e) {
-    console.warn('读取图片失败:', fileName, e);
+    console.error('[DEBUG] loadImageFromFile - 读取图片失败:', fileName, e);
     return null;
   }
 }

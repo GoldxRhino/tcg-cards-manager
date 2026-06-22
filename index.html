@@ -489,8 +489,9 @@
               </h2>
               <button id="setStorageBtn" onclick="handleSetStorageFolder()" 
                 data-tooltip="${useFileSystem ? '图片文件夹已设置，点击可重新选择' : '设置本地图片存储文件夹，图片将保存在您的电脑上'}"
-                class="p-1.5 rounded-lg transition-colors ${useFileSystem ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}">
-                <i class="fa ${useFileSystem ? 'fa-check-circle' : 'fa-folder-open'} text-xs"></i>
+                class="px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 ${useFileSystem ? 'bg-green-500 hover:bg-green-600 text-white shadow-md shadow-green-500/30' : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md shadow-blue-500/30'}">
+                <i class="fa ${useFileSystem ? 'fa-check-circle' : 'fa-folder-open'}"></i>
+                ${useFileSystem ? '已设置' : '设置存储'}
               </button>
             </div>
             <div class="flex gap-2">
@@ -859,12 +860,12 @@ function updateStorageButton() {
   if (!btn) return;
   
   if (useFileSystem) {
-    btn.className = 'p-1.5 rounded-lg transition-colors bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50';
-    btn.innerHTML = '<i class="fa fa-check-circle text-xs"></i>';
+    btn.className = 'px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white shadow-md shadow-green-500/30';
+    btn.innerHTML = '<i class="fa fa-check-circle"></i> 已设置';
     btn.setAttribute('data-tooltip', '图片文件夹已设置，点击可重新选择');
   } else {
-    btn.className = 'p-1.5 rounded-lg transition-colors bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600';
-    btn.innerHTML = '<i class="fa fa-folder-open text-xs"></i>';
+    btn.className = 'px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md shadow-blue-500/30';
+    btn.innerHTML = '<i class="fa fa-folder-open"></i> 设置存储';
     btn.setAttribute('data-tooltip', '设置本地图片存储文件夹，图片将保存在您的电脑上');
   }
 }

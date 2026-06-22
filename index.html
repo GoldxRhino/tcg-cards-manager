@@ -4278,7 +4278,21 @@ function addHistory(action, details, data = {}) {
 
 // === 异步加载表格中的图片 ===
 async function loadTableImages() {
-  if (!useFileSystem) return;
+  // 如果没有使用文件系统，先尝试初始化
+  if (!useFileSystem) {
+    await initFileSystem();
+  }
+  
+  // 如果仍然没有使用文件系统，检查是否需要提示用户
+  if (!useFileSystem && cards.some(card => card.images && card.images.length > 0)) {
+    // 有图片但文件系统不可用，提示用户选择文件夹
+    setTimeout(() => {
+      if (!useFileSystem && confirm('检测到卡牌图片存储在本地文件夹，但当前无法访问。是否重新选择图片存储文件夹？')) {
+        selectImageDirectory();
+      }
+    }, 1000);
+    return;
+  }
   
   const placeholders = document.querySelectorAll('.image-placeholder[data-original-index]');
   
@@ -4305,13 +4319,21 @@ async function loadTableImages() {
         placeholder.innerHTML = '';
         placeholder.appendChild(img);
         
-        // 添加点击事件
-        placeholder.onclick = function() {
-          showCardImagesModal(originalIndex);
+        // 添加点击预览功能
+        img.onclick = function() {
+          openImagePreview(imgSrc);
         };
       }
     } catch (e) {
-      console.warn('加载图片失败:', fileName, e);
+      console.error('加载图片失败:', e);
+      // 尝试重新获取文件夹权限
+      if (e.message.includes('permission')) {
+        setTimeout(() => {
+          if (confirm('图片访问权限已过期，是否重新选择文件夹？')) {
+            selectImageDirectory();
+          }
+        }, 500);
+      }
     }
   }
 }

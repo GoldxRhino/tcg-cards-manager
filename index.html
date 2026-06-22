@@ -1021,8 +1021,43 @@ async function deleteImageFile(fileName) {
   }
 }
 
-// === 检查文件系统是否可用 ===
+// === 验证文件系统是否可用 ===
+async function validateFileSystem() {
+  console.log('[DEBUG] validateFileSystem - 开始验证:', { useFileSystem, imageDirectoryHandle });
+  
+  if (!useFileSystem || !imageDirectoryHandle) {
+    console.log('[DEBUG] validateFileSystem - 文件系统未初始化');
+    return false;
+  }
+  
+  try {
+    // 尝试获取目录中的文件列表来验证句柄是否有效
+    const entries = await imageDirectoryHandle.entries();
+    const entryArray = Array.from(entries);
+    console.log('[DEBUG] validateFileSystem - 目录验证成功，包含', entryArray.length, '个项目');
+    return true;
+  } catch (e) {
+    console.error('[DEBUG] validateFileSystem - 目录验证失败:', e);
+    // 如果验证失败，重置文件系统状态
+    useFileSystem = false;
+    imageDirectoryHandle = null;
+    updateStorageButton();
+    return false;
+  }
+}
+
+// === 检查文件系统 ===
 async function checkFileSystem() {
+  console.log('[DEBUG] checkFileSystem - 检查文件系统:', { useFileSystem, imageDirectoryHandle });
+  
+  // 首先验证现有的文件系统句柄
+  if (useFileSystem && imageDirectoryHandle) {
+    const isValid = await validateFileSystem();
+    if (!isValid) {
+      showToast('提示', '图片存储文件夹访问失效，请重新设置', 'warning');
+    }
+  }
+  
   if (!useFileSystem || !imageDirectoryHandle) {
     showToast('提示', '请先选择图片存储文件夹', 'warning');
     const success = await selectImageDirectory();

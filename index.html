@@ -482,10 +482,17 @@
         <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm overflow-hidden border border-gray-100 dark:border-gray-700">
           <!-- 表头工具栏 -->
           <div class="p-3 border-b border-gray-100 dark:border-gray-700 flex justify-between items-center bg-gray-50/50 dark:bg-gray-700/50">
-            <h2 class="text-base font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-200">
-              <i class="fa fa-list text-primary text-sm"></i> 卡牌收藏
-              <span class="text-xs text-gray-400 dark:text-gray-500 font-normal" id="cardListCount">(0)</span>
-            </h2>
+            <div class="flex items-center gap-2">
+              <h2 class="text-base font-semibold flex items-center gap-2 text-gray-800 dark:text-gray-200">
+                <i class="fa fa-list text-primary text-sm"></i> 卡牌收藏
+                <span class="text-xs text-gray-400 dark:text-gray-500 font-normal" id="cardListCount">(0)</span>
+              </h2>
+              <button id="setStorageBtn" onclick="handleSetStorageFolder()" 
+                data-tooltip="${useFileSystem ? '图片文件夹已设置，点击可重新选择' : '设置本地图片存储文件夹，图片将保存在您的电脑上'}"
+                class="p-1.5 rounded-lg transition-colors ${useFileSystem ? 'bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50' : 'bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600'}">
+                <i class="fa ${useFileSystem ? 'fa-check-circle' : 'fa-folder-open'} text-xs"></i>
+              </button>
+            </div>
             <div class="flex gap-2">
               <select id="sortSel" onchange="sortCards()" class="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-700 cursor-pointer focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
                 <option value="name">按名称</option>
@@ -790,6 +797,8 @@ async function initFileSystem() {
         useFileSystem = true;
         console.log('已恢复图片文件夹访问权限');
         showToast('提示', '图片将保存到本地文件夹', 'info');
+        // 更新按钮状态
+        updateStorageButton();
       }
     }
   } catch (e) {
@@ -831,6 +840,47 @@ async function selectImageDirectory() {
       console.error('选择文件夹失败:', e);
     }
     return false;
+  }
+}
+
+// === 处理设置存储文件夹按钮点击 ===
+async function handleSetStorageFolder() {
+  // 检查浏览器是否支持 File System Access API
+  if (!('showDirectoryPicker' in window)) {
+    showToast('提示', '当前浏览器不支持本地文件夹存储功能', 'info');
+    return;
+  }
+  
+  // 如果已设置，询问是否重新选择
+  if (useFileSystem) {
+    if (!confirm('图片文件夹已设置，是否重新选择？')) {
+      return;
+    }
+  }
+  
+  const success = await selectImageDirectory();
+  
+  // 如果设置成功，更新按钮状态
+  if (success) {
+    updateStorageButton();
+    // 刷新图片显示
+    render();
+  }
+}
+
+// === 更新存储按钮状态 ===
+function updateStorageButton() {
+  const btn = document.getElementById('setStorageBtn');
+  if (!btn) return;
+  
+  if (useFileSystem) {
+    btn.className = 'p-1.5 rounded-lg transition-colors bg-green-100 dark:bg-green-900/30 text-green-600 dark:text-green-400 hover:bg-green-200 dark:hover:bg-green-900/50';
+    btn.innerHTML = '<i class="fa fa-check-circle text-xs"></i>';
+    btn.setAttribute('data-tooltip', '图片文件夹已设置，点击可重新选择');
+  } else {
+    btn.className = 'p-1.5 rounded-lg transition-colors bg-gray-100 dark:bg-gray-700 text-gray-600 dark:text-gray-400 hover:bg-gray-200 dark:hover:bg-gray-600';
+    btn.innerHTML = '<i class="fa fa-folder-open text-xs"></i>';
+    btn.setAttribute('data-tooltip', '设置本地图片存储文件夹，图片将保存在您的电脑上');
   }
 }
 

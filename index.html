@@ -802,6 +802,7 @@ async function initFileSystem() {
 async function selectImageDirectory() {
   try {
     console.log('[DEBUG] selectImageDirectory - 开始选择文件夹');
+    console.log('[DEBUG] selectImageDirectory - 当前状态:', { useFileSystem, imageDirectoryHandle });
     
     // 请求用户选择文件夹
     const dirHandle = await window.showDirectoryPicker({
@@ -824,6 +825,18 @@ async function selectImageDirectory() {
     imageDirectoryHandle = imageDir;
     useFileSystem = true;
     console.log('[DEBUG] selectImageDirectory - 文件系统状态已更新:', { useFileSystem, imageDirectoryHandle });
+    
+    // 验证新设置的文件系统
+    try {
+      const entries = await imageDirectoryHandle.entries();
+      const entryArray = Array.from(entries);
+      console.log('[DEBUG] selectImageDirectory - 新目录验证成功，包含', entryArray.length, '个项目');
+    } catch (e) {
+      console.error('[DEBUG] selectImageDirectory - 新目录验证失败:', e);
+      useFileSystem = false;
+      imageDirectoryHandle = null;
+      return false;
+    }
     
     // 保存句柄到 IndexedDB
     await saveDirectoryHandle(imageDir);

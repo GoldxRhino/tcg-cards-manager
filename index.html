@@ -488,10 +488,8 @@
                 <span class="text-xs text-gray-400 dark:text-gray-500 font-normal" id="cardListCount">(0)</span>
               </h2>
               <button id="setStorageBtn" onclick="handleSetStorageFolder()" 
-                data-tooltip="${useFileSystem ? '图片文件夹已设置，点击可重新选择' : '设置本地图片存储文件夹，图片将保存在您的电脑上'}"
-                class="px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 ${useFileSystem ? 'bg-green-500 hover:bg-green-600 text-white shadow-md shadow-green-500/30' : 'bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md shadow-blue-500/30'}">
-                <i class="fa ${useFileSystem ? 'fa-check-circle' : 'fa-folder-open'}"></i>
-                ${useFileSystem ? '已设置' : '设置存储'}
+                class="text-gray-400 hover:text-primary transition-colors text-sm" title="设置图片存储文件夹">
+                <i class="fa fa-folder-open"></i>
               </button>
             </div>
             <div class="flex gap-2">
@@ -773,7 +771,7 @@ async function initFileSystem() {
   
   // 尝试从 IndexedDB 恢复之前的目录句柄
   try {
-    const db = await openDB('TCGCardDB', 1);
+    const db = await openDB('TCGCardDB', 2);
     const handle = await db.get('directoryHandles', 'imageDirectory');
     if (handle) {
       // 验证权限
@@ -872,7 +870,7 @@ function updateStorageButton() {
 
 // === 保存目录句柄到 IndexedDB ===
 async function saveDirectoryHandle(handle) {
-  const db = await openDB('TCGCardDB', 1, {
+  const db = await openDB('TCGCardDB', 2, {
     upgrade(db) {
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');

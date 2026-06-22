@@ -4362,11 +4362,9 @@ async function loadTableImages() {
   
   // 如果仍然没有使用文件系统，检查是否需要提示用户
   if (!useFileSystem && cards.some(card => card.images && card.images.length > 0)) {
-    // 有图片但文件系统不可用，提示用户选择文件夹
+    // 有图片但文件系统不可用，只显示提示，不强制弹窗
     setTimeout(() => {
-      if (!useFileSystem && confirm('检测到卡牌图片存储在本地文件夹，但当前无法访问。是否重新选择图片存储文件夹？')) {
-        selectImageDirectory();
-      }
+      showToast('提示', '💡 检测到卡牌图片存储在本地文件夹，但当前无法访问。点击"卡牌收藏"旁的文件夹按钮重新设置', 'info');
     }, 1000);
     return;
   }
@@ -4403,12 +4401,10 @@ async function loadTableImages() {
       }
     } catch (e) {
       console.error('加载图片失败:', e);
-      // 尝试重新获取文件夹权限
+      // 权限问题时只显示提示，不强制弹窗
       if (e.message.includes('permission')) {
         setTimeout(() => {
-          if (confirm('图片访问权限已过期，是否重新选择文件夹？')) {
-            selectImageDirectory();
-          }
+          showToast('提示', '💡 图片访问权限已过期，点击"卡牌收藏"旁的文件夹按钮重新设置', 'info');
         }, 500);
       }
     }

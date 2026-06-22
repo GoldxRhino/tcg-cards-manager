@@ -747,6 +747,7 @@ async function initFileSystem() {
         imageDirectoryHandle = handle;
         useFileSystem = true;
         console.log('已恢复图片文件夹访问权限');
+        showToast('提示', '图片将保存到本地文件夹', 'info');
       }
     }
   } catch (e) {

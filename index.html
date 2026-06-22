@@ -1198,6 +1198,54 @@ function openAddCardModal() {
         </div>
       </div>
       
+      <!-- 是否送评开关 -->
+      <div class="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg mt-3">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="isSubmitting" class="sr-only peer" onchange="handleSubmittingToggle(this)">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-500"></div>
+          <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">送评中</span>
+        </label>
+        <span id="submittingStatusText" class="text-xs text-purple-600 dark:text-purple-400">未送评</span>
+      </div>
+      
+      <!-- 送评信息（默认隐藏） -->
+      <div id="submittingInfo" class="hidden grid grid-cols-2 gap-3 mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+        <div>
+          <label class="block text-sm font-medium mb-1">送评机构</label>
+          <select id="submittingOrg" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="">请选择</option>
+            <option value="PSA">PSA</option>
+            <option value="CGC">CGC</option>
+            <option value="BGS">BGS</option>
+            <option value="SGC">SGC</option>
+            <option value="ARS">ARS</option>
+            <option value="other">其他</option>
+          </select>
+          <input type="text" id="submittingOrgCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评机构">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">送评途径</label>
+          <select id="submittingMethod" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+            <option value="">请选择</option>
+            <option value="官网直送">官网直送</option>
+            <option value="国内代理">国内代理</option>
+            <option value="淘宝代购">淘宝代购</option>
+            <option value="其他">其他</option>
+          </select>
+          <input type="text" id="submittingMethodCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评途径">
+        </div>
+        <!-- 送评凭证 -->
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1">送评凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+          <div class="flex flex-wrap gap-2" id="submittingVoucherPreview"></div>
+          <label class="mt-2 flex items-center justify-center w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg py-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+            <i class="fa fa-upload text-gray-400 mr-2"></i>
+            <span class="text-sm text-gray-500 dark:text-gray-400">添加送评凭证图片</span>
+            <input type="file" accept="image/*" multiple class="hidden" onchange="handleSubmittingVoucherUpload(this)">
+          </label>
+        </div>
+      </div>
+      
       <!-- 是否入库开关 -->
       <div class="flex items-center gap-3 p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg">
         <label class="relative inline-flex items-center cursor-pointer">
@@ -1473,7 +1521,12 @@ function openAddCardModal() {
       saleCurrency: saleCurrency,
       isInStock: document.getElementById('isInStock')?.checked || false,
       purchaseVouchers: purchaseVouchersList || [],
-      saleVouchers: saleVouchersList || []
+      saleVouchers: saleVouchersList || [],
+      // 送评相关字段
+      isSubmitting: document.getElementById('isSubmitting')?.checked || false,
+      submittingOrg: document.getElementById('submittingOrg')?.value || '',
+      submittingMethod: document.getElementById('submittingMethod')?.value || '',
+      submittingVouchers: submittingVouchersList || []
     });
     save();
     render();
@@ -3670,6 +3723,170 @@ function handleStockToggle(checkbox) {
   }
 }
 
+// === 送评开关处理 ===
+function handleSubmittingToggle(checkbox) {
+  const statusText = document.getElementById('submittingStatusText');
+  const submittingInfo = document.getElementById('submittingInfo');
+  if (statusText) {
+    if (checkbox.checked) {
+      statusText.textContent = '送评中';
+      statusText.className = 'text-xs text-purple-600 dark:text-purple-400';
+    } else {
+      statusText.textContent = '未送评';
+      statusText.className = 'text-xs text-purple-600 dark:text-purple-400';
+    }
+  }
+  if (submittingInfo) {
+    submittingInfo.classList.toggle('hidden', !checkbox.checked);
+  }
+}
+
+// === 送评凭证处理变量 ===
+let submittingVouchersList = [];
+let editSubmittingVouchersList = [];
+
+// === 处理送评凭证上传（新增页面）===
+async function handleSubmittingVoucherUpload(input) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  const fsReady = await checkFileSystem();
+  if (!fsReady) return;
+  
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      continue;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 10MB', 'error');
+      continue;
+    }
+    
+    const fileName = generateImageFileName('sv');
+    try {
+      await saveImageToFile(file, fileName);
+      submittingVouchersList.push(fileName);
+      await updateSubmittingVoucherPreview();
+    } catch (e) {
+      showToast('错误', '保存送评凭证失败', 'error');
+    }
+  }
+  input.value = '';
+}
+
+// === 更新送评凭证预览（新增页面）===
+async function updateSubmittingVoucherPreview() {
+  const preview = document.getElementById('submittingVoucherPreview');
+  if (!preview) return;
+  
+  if (submittingVouchersList.length === 0) {
+    preview.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  for (let i = 0; i < submittingVouchersList.length; i++) {
+    const fileName = submittingVouchersList[i];
+    let imgSrc = '';
+    if (useFileSystem) {
+      imgSrc = await loadImageFromFile(fileName) || '';
+    }
+    
+    html += `
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
+        <img src="${imgSrc}" class="w-full h-full object-cover" alt="送评凭证${i + 1}" onerror="this.style.display='none'">
+        <button type="button" onclick="event.stopPropagation(); removeSubmittingVoucher(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `;
+  }
+  preview.innerHTML = html;
+}
+
+// === 删除送评凭证（新增页面）===
+async function removeSubmittingVoucher(index) {
+  if (!confirm('确定要删除这张送评凭证吗？')) return;
+  
+  const fileName = submittingVouchersList[index];
+  if (fileName) await deleteImageFile(fileName);
+  
+  submittingVouchersList.splice(index, 1);
+  await updateSubmittingVoucherPreview();
+}
+
+// === 处理送评凭证上传（编辑页面）===
+async function handleEditSubmittingVoucherUpload(input) {
+  const files = Array.from(input.files);
+  if (files.length === 0) return;
+  
+  const fsReady = await checkFileSystem();
+  if (!fsReady) return;
+  
+  for (const file of files) {
+    if (!file.type.startsWith('image/')) {
+      showToast('错误', '请选择图片文件', 'error');
+      continue;
+    }
+    if (file.size > 10 * 1024 * 1024) {
+      showToast('错误', '图片大小不能超过 10MB', 'error');
+      continue;
+    }
+    
+    const fileName = generateImageFileName('sv');
+    try {
+      await saveImageToFile(file, fileName);
+      editSubmittingVouchersList.push(fileName);
+      await updateEditSubmittingVoucherPreview();
+    } catch (e) {
+      showToast('错误', '保存送评凭证失败', 'error');
+    }
+  }
+  input.value = '';
+}
+
+// === 更新送评凭证预览（编辑页面）===
+async function updateEditSubmittingVoucherPreview() {
+  const preview = document.getElementById('submittingVoucherPreview');
+  if (!preview) return;
+  
+  if (editSubmittingVouchersList.length === 0) {
+    preview.innerHTML = '';
+    return;
+  }
+  
+  let html = '';
+  for (let i = 0; i < editSubmittingVouchersList.length; i++) {
+    const fileName = editSubmittingVouchersList[i];
+    let imgSrc = '';
+    if (useFileSystem) {
+      imgSrc = await loadImageFromFile(fileName) || '';
+    }
+    
+    html += `
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
+        <img src="${imgSrc}" class="w-full h-full object-cover" alt="送评凭证${i + 1}" onerror="this.style.display='none'">
+        <button type="button" onclick="event.stopPropagation(); removeEditSubmittingVoucher(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+          <i class="fa fa-times"></i>
+        </button>
+      </div>
+    `;
+  }
+  preview.innerHTML = html;
+}
+
+// === 删除送评凭证（编辑页面）===
+async function removeEditSubmittingVoucher(index) {
+  if (!confirm('确定要删除这张送评凭证吗？')) return;
+  
+  const fileName = editSubmittingVouchersList[index];
+  if (fileName) await deleteImageFile(fileName);
+  
+  editSubmittingVouchersList.splice(index, 1);
+  await updateEditSubmittingVoucherPreview();
+}
+
 // === 处理类型选择变化 ===
 function handleTypeChange(select) {
   const customInput = document.getElementById('cardTypeCustom');
@@ -4253,6 +4470,7 @@ function editCard(index) {
   editCardImagesList = card.images ? [...card.images] : (card.image ? [card.image] : []);
   editPurchaseVouchersList = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
   editSaleVouchersList = card.saleVouchers ? [...card.saleVouchers] : [];
+  editSubmittingVouchersList = card.submittingVouchers ? [...card.submittingVouchers] : [];
   
   const content = `
     <form id="cardForm" class="space-y-3">
@@ -4324,6 +4542,54 @@ function editCard(index) {
             <option value="other" ${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? 'selected' : ''}>其他</option>
           </select>
           <input type="text" id="gradingOrgCustom" value="${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? card.gradingOrg : ''}" class="${card.gradingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.gradingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他评级机构">
+        </div>
+      </div>
+      
+      <!-- 是否送评开关 -->
+      <div class="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg mt-3">
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="isSubmitting" ${card.isSubmitting ? 'checked' : ''} class="sr-only peer" onchange="handleSubmittingToggle(this)">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-500"></div>
+          <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">送评中</span>
+        </label>
+        <span id="submittingStatusText" class="text-xs text-purple-600 dark:text-purple-400">${card.isSubmitting ? '送评中' : '未送评'}</span>
+      </div>
+      
+      <!-- 送评信息（默认隐藏） -->
+      <div id="submittingInfo" class="${card.isSubmitting ? '' : 'hidden'} grid grid-cols-2 gap-3 mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+        <div>
+          <label class="block text-sm font-medium mb-1">送评机构</label>
+          <select id="submittingOrg" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+            <option value="">请选择</option>
+            <option value="PSA" ${card.submittingOrg === 'PSA' ? 'selected' : ''}>PSA</option>
+            <option value="CGC" ${card.submittingOrg === 'CGC' ? 'selected' : ''}>CGC</option>
+            <option value="BGS" ${card.submittingOrg === 'BGS' ? 'selected' : ''}>BGS</option>
+            <option value="SGC" ${card.submittingOrg === 'SGC' ? 'selected' : ''}>SGC</option>
+            <option value="ARS" ${card.submittingOrg === 'ARS' ? 'selected' : ''}>ARS</option>
+            <option value="other" ${card.submittingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.submittingOrg) ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" id="submittingOrgCustom" value="${card.submittingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.submittingOrg) ? card.submittingOrg : ''}" class="${card.submittingOrg && !['PSA','CGC','BGS','SGC','ARS',''].includes(card.submittingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他送评机构">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">送评途径</label>
+          <select id="submittingMethod" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+            <option value="">请选择</option>
+            <option value="官网直送" ${card.submittingMethod === '官网直送' ? 'selected' : ''}>官网直送</option>
+            <option value="国内代理" ${card.submittingMethod === '国内代理' ? 'selected' : ''}>国内代理</option>
+            <option value="淘宝代购" ${card.submittingMethod === '淘宝代购' ? 'selected' : ''}>淘宝代购</option>
+            <option value="其他" ${card.submittingMethod === '其他' ? 'selected' : ''}>其他</option>
+          </select>
+          <input type="text" id="submittingMethodCustom" value="${card.submittingMethod === '其他' ? card.submittingMethodCustom : ''}" class="${card.submittingMethod === '其他' ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他送评途径">
+        </div>
+        <!-- 送评凭证 -->
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1">送评凭证 <span class="text-xs text-gray-400">(可选)</span></label>
+          <div class="flex flex-wrap gap-2" id="submittingVoucherPreview"></div>
+          <label class="mt-2 flex items-center justify-center w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg py-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
+            <i class="fa fa-upload text-gray-400 mr-2"></i>
+            <span class="text-sm text-gray-500 dark:text-gray-400">添加送评凭证图片</span>
+            <input type="file" accept="image/*" multiple class="hidden" onchange="handleEditSubmittingVoucherUpload(this)">
+          </label>
         </div>
       </div>
       
@@ -4547,6 +4813,7 @@ function editCard(index) {
   updateEditCardImagesPreview();
   updateEditVoucherPreview('purchase');
   updateEditVoucherPreview('sale');
+  updateEditSubmittingVoucherPreview();
   
   document.getElementById('cardForm').onsubmit = function(e) {
     e.preventDefault();
@@ -4625,7 +4892,12 @@ function editCard(index) {
         saleCurrency: saleCurrency,
         isInStock: document.getElementById('isInStock')?.checked || false,
         purchaseVouchers: editPurchaseVouchersList.length > 0 ? editPurchaseVouchersList : existingPurchaseVouchers,
-        saleVouchers: editSaleVouchersList.length > 0 ? editSaleVouchersList : existingSaleVouchers
+        saleVouchers: editSaleVouchersList.length > 0 ? editSaleVouchersList : existingSaleVouchers,
+        // 送评相关字段
+        isSubmitting: document.getElementById('isSubmitting')?.checked || false,
+        submittingOrg: document.getElementById('submittingOrg')?.value || '',
+        submittingMethod: document.getElementById('submittingMethod')?.value || '',
+        submittingVouchers: editSubmittingVouchersList.length > 0 ? editSubmittingVouchersList : (cards[index].submittingVouchers || [])
       };
       save();
       render();
@@ -4634,6 +4906,7 @@ function editCard(index) {
       editCardImagesList = [];
       editPurchaseVouchersList = [];
       editSaleVouchersList = [];
+      editSubmittingVouchersList = [];
       showToast('成功', '卡牌已更新');
     } catch (error) {
       console.error('保存卡牌时出错:', error);

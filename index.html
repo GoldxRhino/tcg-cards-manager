@@ -344,6 +344,10 @@
           <button onclick="showBgColorPicker()" class="bg-white/20 backdrop-blur-sm p-1.5 rounded-lg hover:bg-white/30 transition-colors" data-tooltip="自定义首页背景颜色主题。提供多种渐变配色方案可供选择。">
             <i class="fa fa-paint-brush text-white text-sm"></i>
           </button>
+          
+          <button id="cloudStorageBtn" onclick="showCloudStorageConfig()" class="bg-white/20 backdrop-blur-sm p-1.5 rounded-lg hover:bg-white/30 transition-colors" data-tooltip="配置云存储备份，将图片同步到 GitHub 仓库。">
+            <i class="fa fa-cloud-upload text-white text-sm"></i>
+          </button>
         </div>
       </div>
     </div>
@@ -733,6 +737,9 @@ function initApp() {
   // 初始化文件系统（如果之前已授权），并检查是否需要提示用户设置
   initFileSystem();
   
+  // 加载云存储配置
+  loadCloudStorageConfig();
+  
   // 延迟检查并提醒用户设置图片文件夹
   setTimeout(() => {
     checkAndPromptImageFolder();
@@ -758,6 +765,242 @@ async function checkAndPromptImageFolder() {
   if (!localStorage.getItem('imageFolderPrompted')) {
     showToast('提示', '💡 点击"卡牌收藏"旁的文件夹按钮可设置本地图片存储', 'info');
     localStorage.setItem('imageFolderPrompted', 'true');
+  }
+}
+
+// === GitHub 云存储配置 ===
+let cloudStorageConfig = {
+  enabled: false,
+  token: '',
+  owner: '',
+  repo: '',
+  branch: 'main'
+};
+
+// === 加载云存储配置 ===
+function loadCloudStorageConfig() {
+  const config = localStorage.getItem('cloudStorageConfig');
+  if (config) {
+    cloudStorageConfig = JSON.parse(config);
+  }
+  updateCloudStorageButton();
+}
+
+// === 更新云存储按钮状态 ===
+function updateCloudStorageButton() {
+  const btn = document.getElementById('cloudStorageBtn');
+  if (!btn) return;
+  
+  if (cloudStorageConfig.enabled && cloudStorageConfig.token) {
+    btn.className = 'bg-green-500/30 backdrop-blur-sm p-1.5 rounded-lg hover:bg-green-500/40 transition-colors';
+    btn.setAttribute('data-tooltip', '云存储已配置，图片将备份到 GitHub');
+  } else {
+    btn.className = 'bg-white/20 backdrop-blur-sm p-1.5 rounded-lg hover:bg-white/30 transition-colors';
+    btn.setAttribute('data-tooltip', '配置云存储备份，将图片同步到 GitHub 仓库');
+  }
+}
+
+// === 显示云存储配置面板 ===
+function showCloudStorageConfig() {
+  const content = `
+    <div class="space-y-4">
+      <div class="bg-gradient-to-r from-blue-50 to-purple-50 dark:from-blue-900/30 dark:to-purple-900/30 rounded-xl p-4">
+        <div class="flex items-center gap-3 mb-3">
+          <div class="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+            <i class="fa fa-cloud-upload text-white"></i>
+          </div>
+          <div>
+            <h3 class="font-bold text-gray-800 dark:text-gray-200">云存储备份</h3>
+            <p class="text-xs text-gray-500 dark:text-gray-400">将卡牌图片备份到您的 GitHub 仓库</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+        <h4 class="font-semibold text-amber-700 dark:text-amber-400 text-sm mb-2 flex items-center gap-2">
+          <i class="fa fa-wrench"></i> 配置步骤
+        </h4>
+        <ol class="space-y-2 text-xs text-gray-600 dark:text-gray-400">
+          <li class="flex items-start gap-2">
+            <span class="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">1</span>
+            在 GitHub 创建一个仓库（建议私有）
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">2</span>
+            <a href="https://github.com/settings/tokens/new" target="_blank" class="text-blue-500 hover:underline">点击创建令牌</a>，权限勾选 <code class="bg-gray-200 dark:bg-gray-700 px-1 rounded">repo</code>
+          </li>
+          <li class="flex items-start gap-2">
+            <span class="bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 rounded-full w-5 h-5 flex items-center justify-center flex-shrink-0 text-[10px] font-bold">3</span>
+            填写下方信息，点击测试连接
+          </li>
+        </ol>
+      </div>
+      
+      <div class="flex items-center justify-between p-3 bg-gray-50 dark:bg-gray-700/50 rounded-lg">
+        <span class="text-sm font-medium text-gray-700 dark:text-gray-300">启用云存储</span>
+        <label class="relative inline-flex items-center cursor-pointer">
+          <input type="checkbox" id="cloudEnabled" ${cloudStorageConfig.enabled ? 'checked' : ''} onchange="toggleCloudStorage()" class="sr-only peer">
+          <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-2 peer-focus:ring-primary/30 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+        </label>
+      </div>
+      
+      <div id="cloudConfigFields" ${cloudStorageConfig.enabled ? '' : 'style="display: none;"'} class="space-y-3">
+        <div class="relative">
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <i class="fa fa-key mr-1"></i> 个人访问令牌
+          </label>
+          <input type="password" id="cloudToken" value="${cloudStorageConfig.token}" 
+            class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700"
+            placeholder="ghp_xxxxxxxxxxxx...">
+          <p class="text-[10px] text-gray-500 mt-1 flex items-center gap-1">
+            <i class="fa fa-shield"></i> 令牌仅保存在本地，不会上传
+          </p>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-3">
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+              <i class="fa fa-user mr-1"></i> 用户名
+            </label>
+            <input type="text" id="cloudOwner" value="${cloudStorageConfig.owner}" 
+              class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700"
+              placeholder="GitHub 用户名">
+          </div>
+          <div>
+            <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+              <i class="fa fa-folder mr-1"></i> 仓库名
+            </label>
+            <input type="text" id="cloudRepo" value="${cloudStorageConfig.repo}" 
+              class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700"
+              placeholder="例如: my-cards">
+          </div>
+        </div>
+        
+        <div>
+          <label class="block text-xs font-medium text-gray-600 dark:text-gray-400 mb-1.5">
+            <i class="fa fa-code-fork mr-1"></i> 分支名
+          </label>
+          <input type="text" id="cloudBranch" value="${cloudStorageConfig.branch || 'main'}" 
+            class="w-full border border-gray-200 dark:border-gray-600 rounded-lg px-3 py-2.5 text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none bg-white dark:bg-gray-700"
+            placeholder="main">
+        </div>
+        
+        <button onclick="testCloudStorage()" class="w-full bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white py-3 rounded-xl text-sm font-semibold transition-all shadow-lg shadow-blue-500/20 flex items-center justify-center gap-2">
+          <i class="fa fa-check-circle"></i> 测试并启用
+        </button>
+      </div>
+      
+      <div class="text-[10px] text-gray-400 text-center pt-2">
+        图片将保存到仓库的 <code>tcg-card-images/</code> 文件夹
+      </div>
+    </div>
+  `;
+  showModal(content, '☁️ 云存储配置');
+}
+
+// === 切换云存储开关 ===
+function toggleCloudStorage() {
+  const enabled = document.getElementById('cloudEnabled').checked;
+  document.getElementById('cloudConfigFields').style.display = enabled ? 'block' : 'none';
+  cloudStorageConfig.enabled = enabled;
+  saveCloudStorageConfig();
+}
+
+// === 保存云存储配置 ===
+function saveCloudStorageConfig() {
+  if (document.getElementById('cloudToken')) {
+    cloudStorageConfig.token = document.getElementById('cloudToken').value;
+    cloudStorageConfig.owner = document.getElementById('cloudOwner').value;
+    cloudStorageConfig.repo = document.getElementById('cloudRepo').value;
+    cloudStorageConfig.branch = document.getElementById('cloudBranch').value;
+  }
+  localStorage.setItem('cloudStorageConfig', JSON.stringify(cloudStorageConfig));
+  updateCloudStorageButton();
+}
+
+// === 测试云存储连接 ===
+async function testCloudStorage() {
+  saveCloudStorageConfig();
+  
+  if (!cloudStorageConfig.token || !cloudStorageConfig.owner || !cloudStorageConfig.repo) {
+    showToast('错误', '请填写完整的配置信息', 'error');
+    return;
+  }
+  
+  try {
+    showToast('提示', '正在测试连接...', 'info');
+    
+    const url = `https://api.github.com/repos/${cloudStorageConfig.owner}/${cloudStorageConfig.repo}`;
+    const response = await fetch(url, {
+      headers: {
+        'Authorization': `token ${cloudStorageConfig.token}`
+      }
+    });
+    
+    if (response.ok) {
+      showToast('成功', '✅ 连接成功！云存储已配置', 'success');
+      cloudStorageConfig.enabled = true;
+      saveCloudStorageConfig();
+    } else {
+      const error = await response.json();
+      showToast('错误', `连接失败: ${error.message || '未知错误'}`, 'error');
+    }
+  } catch (e) {
+    showToast('错误', `连接失败: ${e.message}`, 'error');
+  }
+}
+
+// === 上传图片到 GitHub ===
+async function uploadImageToGitHub(file, fileName) {
+  if (!cloudStorageConfig.enabled || !cloudStorageConfig.token) {
+    return false;
+  }
+  
+  try {
+    const arrayBuffer = await file.arrayBuffer();
+    const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+    
+    const path = `tcg-card-images/${fileName}`;
+    const url = `https://api.github.com/repos/${cloudStorageConfig.owner}/${cloudStorageConfig.repo}/contents/${path}`;
+    
+    // 先检查文件是否已存在
+    const checkResponse = await fetch(url, {
+      headers: {
+        'Authorization': `token ${cloudStorageConfig.token}`
+      }
+    });
+    
+    let payload = {
+      message: `上传卡牌图片: ${fileName}`,
+      content: base64,
+      branch: cloudStorageConfig.branch
+    };
+    
+    if (checkResponse.ok) {
+      const existing = await checkResponse.json();
+      payload.sha = existing.sha;
+    }
+    
+    const response = await fetch(url, {
+      method: 'PUT',
+      headers: {
+        'Authorization': `token ${cloudStorageConfig.token}`,
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (response.ok) {
+      console.log('[DEBUG] GitHub 上传成功:', fileName);
+      return true;
+    } else {
+      const error = await response.json();
+      console.error('[DEBUG] GitHub 上传失败:', error.message);
+      return false;
+    }
+  } catch (e) {
+    console.error('[DEBUG] GitHub 上传异常:', e);
+    return false;
   }
 }
 
@@ -965,20 +1208,10 @@ async function openDB(name, version, upgradeCallback) {
   const databases = await indexedDB.databases();
   const existingDb = databases.find(db => db.name === name);
   
-  // 删除版本冲突的旧数据库
+  // 如果现有版本高于请求版本，使用现有版本打开（不删除数据库）
   if (existingDb && existingDb.version > version) {
-    console.log('[DEBUG] openDB - 检测到版本冲突，现有版本:', existingDb.version, '请求版本:', version);
-    await new Promise((resolve, reject) => {
-      const deleteReq = indexedDB.deleteDatabase(name);
-      deleteReq.onsuccess = () => {
-        console.log('[DEBUG] openDB - 旧数据库已删除');
-        resolve();
-      };
-      deleteReq.onerror = () => {
-        console.error('[DEBUG] openDB - 删除旧数据库失败:', deleteReq.error);
-        reject(deleteReq.error);
-      };
-    });
+    console.log('[DEBUG] openDB - 现有版本更高，使用:', existingDb.version);
+    version = existingDb.version;
   }
   
   return new Promise((resolve, reject) => {
@@ -1084,6 +1317,7 @@ async function saveImageToFile(file, fileName, showNotification = false) {
   await saveImageToIndexedDB(file, fileName);
   
   // 如果文件系统可用，同时保存到本地文件夹
+  let localSaved = false;
   if (useFileSystem && imageDirectoryHandle) {
     try {
       const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
@@ -1091,6 +1325,7 @@ async function saveImageToFile(file, fileName, showNotification = false) {
       await writable.write(file);
       await writable.close();
       console.log('[DEBUG] saveImageToFile - 图片保存到文件夹成功:', fileName);
+      localSaved = true;
       
       if (showNotification) {
         showToast('成功', '✅ 图片已保存到本地文件夹', 'success');
@@ -1109,12 +1344,23 @@ async function saveImageToFile(file, fileName, showNotification = false) {
     }
   }
   
+  // 如果云存储已配置，同时上传到 GitHub（不阻塞主流程）
+  if (cloudStorageConfig.enabled && cloudStorageConfig.token) {
+    uploadImageToGitHub(file, fileName).then((success) => {
+      if (success) {
+        console.log('[DEBUG] saveImageToFile - 图片已备份到 GitHub');
+      }
+    }).catch((e) => {
+      console.error('[DEBUG] saveImageToFile - GitHub 备份失败:', e);
+    });
+  }
+  
   return fileName;
 }
 
 // === 加载图片（智能切换：优先文件系统，失败则用 IndexedDB 备份）===
 async function loadImageFromFile(fileName) {
-  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, imageDirectoryHandle, fileName });
+  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, useOpFS, imageDirectoryHandle: !!imageDirectoryHandle, fileName });
   
   // 优先尝试从文件系统加载
   if (useFileSystem && imageDirectoryHandle) {
@@ -1125,8 +1371,10 @@ async function loadImageFromFile(fileName) {
       console.log('[DEBUG] loadImageFromFile - 从文件夹加载成功:', fileName);
       return url;
     } catch (e) {
-      console.warn('[DEBUG] loadImageFromFile - 从文件夹加载失败，尝试从备份加载:', e.message);
+      console.warn('[DEBUG] loadImageFromFile - 从文件夹加载失败:', e.message);
     }
+  } else {
+    console.log('[DEBUG] loadImageFromFile - 文件系统不可用，直接尝试从备份加载');
   }
   
   // 文件系统不可用或加载失败，尝试从 IndexedDB 备份加载
@@ -4640,18 +4888,18 @@ async function loadTableImages() {
   
   const placeholders = document.querySelectorAll('.image-placeholder[data-original-index]');
   
-  for (const placeholder of placeholders) {
+  // 并行加载所有图片，提高性能和可靠性
+  const loadPromises = Array.from(placeholders).map(async (placeholder) => {
     const originalIndex = parseInt(placeholder.getAttribute('data-original-index'));
     const card = cards[originalIndex];
-    if (!card) continue;
+    if (!card) return;
     
     const fileName = card.images && card.images.length > 0 ? card.images[0] : card.image;
-    if (!fileName) continue;
+    if (!fileName) return;
     
     try {
       const imgSrc = await loadImageFromFile(fileName);
       if (imgSrc) {
-        // 替换占位符为图片
         const img = document.createElement('img');
         img.src = imgSrc;
         img.className = 'w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform';
@@ -4659,25 +4907,22 @@ async function loadTableImages() {
           this.style.display = 'none';
         };
         
-        // 清空并添加图片
         placeholder.innerHTML = '';
         placeholder.appendChild(img);
         
-        // 添加点击预览功能
         img.onclick = function() {
           openImagePreview(imgSrc);
         };
       }
     } catch (e) {
-      console.error('加载图片失败:', e);
-      // 权限问题时只显示提示，不强制弹窗
-      if (e.message.includes('permission')) {
-        setTimeout(() => {
-          showToast('提示', '💡 图片访问权限已过期，点击"卡牌收藏"旁的文件夹按钮重新设置', 'info');
-        }, 500);
-      }
+      console.error('加载图片失败:', fileName, e);
     }
-  }
+  });
+  
+  // 等待所有图片加载完成（不阻塞）
+  Promise.all(loadPromises).catch(e => {
+    console.error('图片加载过程中出现错误:', e);
+  });
 }
 
 function generateId() {

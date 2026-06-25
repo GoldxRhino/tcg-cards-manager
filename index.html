@@ -1204,18 +1204,21 @@ async function deleteImageFromIndexedDB(fileName) {
 
 // === 简单的 IndexedDB 封装 ===
 async function openDB(name, version, upgradeCallback) {
-  // 先检查是否有版本冲突
+  // 先检查现有数据库版本，确保能触发 onupgradeneeded
   const databases = await indexedDB.databases();
   const existingDb = databases.find(db => db.name === name);
   
-  // 如果现有版本高于请求版本，使用现有版本打开（不删除数据库）
-  if (existingDb && existingDb.version > version) {
-    console.log('[DEBUG] openDB - 现有版本更高，使用:', existingDb.version);
-    version = existingDb.version;
+  let openVersion = version;
+  if (existingDb) {
+    // 如果现有版本 >= 请求版本，使用现有版本 + 1 来强制触发升级
+    if (existingDb.version >= version) {
+      openVersion = existingDb.version + 1;
+      console.log('[DEBUG] openDB - 现有版本:', existingDb.version, '使用升级版本:', openVersion);
+    }
   }
   
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, version);
+    const request = indexedDB.open(name, openVersion);
     
     request.onerror = () => {
       console.error('[DEBUG] openDB - 打开数据库失败:', request.error);
@@ -1226,7 +1229,7 @@ async function openDB(name, version, upgradeCallback) {
       console.log('[DEBUG] openDB - 数据库升级:', event.oldVersion, '->', event.newVersion);
       const db = event.target.result;
       
-      // 确保创建必要的 store
+      // 确保创建所有必要的 store
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');
         console.log('[DEBUG] openDB - 创建 store: directoryHandles');
@@ -1243,28 +1246,11 @@ async function openDB(name, version, upgradeCallback) {
     
     request.onsuccess = () => {
       const db = request.result;
+      console.log('[DEBUG] openDB - 数据库打开成功，stores:', Array.from(db.objectStoreNames));
       
-      // 检查是否缺少必要的 store（如果版本相同但 store 缺失）
-      const requiredStores = ['directoryHandles', 'images'];
-      const missingStores = requiredStores.filter(s => !db.objectStoreNames.contains(s));
-      
-      if (missingStores.length > 0) {
-        console.log('[DEBUG] openDB - 发现缺失的 store，需要升级:', missingStores);
-        db.close();
-        // 升级版本号以触发 onupgradeneeded
-        openDB(name, version + 1, upgradeCallback).then(resolve).catch(reject);
-        return;
-      }
-      
-      // 包装 db 对象，添加 get/put 方法
+      // 包装 db 对象，添加 get/put/delete 方法
       db.get = function(storeName, key) {
         return new Promise((res, rej) => {
-          if (!db.objectStoreNames.contains(storeName)) {
-            console.log('[DEBUG] openDB - store 不存在:', storeName);
-            res(null);
-            return;
-          }
-          
           const tx = db.transaction(storeName, 'readonly');
           const store = tx.objectStore(storeName);
           const req = store.get(key);
@@ -1275,12 +1261,6 @@ async function openDB(name, version, upgradeCallback) {
       
       db.put = function(storeName, value, key) {
         return new Promise((res, rej) => {
-          if (!db.objectStoreNames.contains(storeName)) {
-            console.log('[DEBUG] openDB - store 不存在:', storeName);
-            rej(new Error('Store not found: ' + storeName));
-            return;
-          }
-          
           const tx = db.transaction(storeName, 'readwrite');
           const store = tx.objectStore(storeName);
           const req = store.put(value, key);
@@ -1291,11 +1271,6 @@ async function openDB(name, version, upgradeCallback) {
       
       db.delete = function(storeName, key) {
         return new Promise((res, rej) => {
-          if (!db.objectStoreNames.contains(storeName)) {
-            res();
-            return;
-          }
-          
           const tx = db.transaction(storeName, 'readwrite');
           const store = tx.objectStore(storeName);
           const req = store.delete(key);

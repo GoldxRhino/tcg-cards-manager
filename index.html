@@ -1366,7 +1366,7 @@ async function saveImageToFile(file, fileName, showNotification = false) {
 
 // === 加载图片（智能切换：优先文件系统，失败则用 IndexedDB 备份）===
 async function loadImageFromFile(fileName) {
-  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, useOpFS, imageDirectoryHandle: !!imageDirectoryHandle, fileName });
+  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, imageDirectoryHandle: !!imageDirectoryHandle, fileName });
   
   // 优先尝试从文件系统加载
   if (useFileSystem && imageDirectoryHandle) {

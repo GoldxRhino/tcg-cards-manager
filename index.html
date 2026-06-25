@@ -965,9 +965,9 @@ async function openDB(name, version, upgradeCallback) {
   const databases = await indexedDB.databases();
   const existingDb = databases.find(db => db.name === name);
   
+  // 删除版本冲突的旧数据库
   if (existingDb && existingDb.version > version) {
     console.log('[DEBUG] openDB - 检测到版本冲突，现有版本:', existingDb.version, '请求版本:', version);
-    // 删除旧数据库
     await new Promise((resolve, reject) => {
       const deleteReq = indexedDB.deleteDatabase(name);
       deleteReq.onsuccess = () => {
@@ -991,13 +991,37 @@ async function openDB(name, version, upgradeCallback) {
     
     request.onupgradeneeded = (event) => {
       console.log('[DEBUG] openDB - 数据库升级:', event.oldVersion, '->', event.newVersion);
+      const db = event.target.result;
+      
+      // 确保创建必要的 store
+      if (!db.objectStoreNames.contains('directoryHandles')) {
+        db.createObjectStore('directoryHandles');
+        console.log('[DEBUG] openDB - 创建 store: directoryHandles');
+      }
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images');
+        console.log('[DEBUG] openDB - 创建 store: images');
+      }
+      
       if (upgradeCallback) {
-        upgradeCallback(event.target.result);
+        upgradeCallback(db);
       }
     };
     
     request.onsuccess = () => {
       const db = request.result;
+      
+      // 检查是否缺少必要的 store（如果版本相同但 store 缺失）
+      const requiredStores = ['directoryHandles', 'images'];
+      const missingStores = requiredStores.filter(s => !db.objectStoreNames.contains(s));
+      
+      if (missingStores.length > 0) {
+        console.log('[DEBUG] openDB - 发现缺失的 store，需要升级:', missingStores);
+        db.close();
+        // 升级版本号以触发 onupgradeneeded
+        openDB(name, version + 1, upgradeCallback).then(resolve).catch(reject);
+        return;
+      }
       
       // 包装 db 对象，添加 get/put 方法
       db.get = function(storeName, key) {
@@ -1053,7 +1077,7 @@ async function openDB(name, version, upgradeCallback) {
 }
 
 // === 保存图片（混合存储：文件系统 + IndexedDB 备份）===
-async function saveImageToFile(file, fileName) {
+async function saveImageToFile(file, fileName, showNotification = false) {
   console.log('[DEBUG] saveImageToFile - 开始保存图片:', { useFileSystem, imageDirectoryHandle, fileName });
   
   // 首先备份到 IndexedDB（无论文件系统是否可用）
@@ -1067,9 +1091,21 @@ async function saveImageToFile(file, fileName) {
       await writable.write(file);
       await writable.close();
       console.log('[DEBUG] saveImageToFile - 图片保存到文件夹成功:', fileName);
+      
+      if (showNotification) {
+        showToast('成功', '✅ 图片已保存到本地文件夹', 'success');
+      }
     } catch (e) {
       console.error('[DEBUG] saveImageToFile - 保存到文件夹失败:', e);
       // 文件夹保存失败不影响主流程，图片已备份到 IndexedDB
+      if (showNotification) {
+        showToast('提示', '图片已保存到浏览器缓存中', 'info');
+      }
+    }
+  } else {
+    // 文件系统不可用，仅保存到 IndexedDB
+    if (showNotification) {
+      showToast('提示', '📁 图片已保存到浏览器缓存中。设置本地文件夹可永久保存图片', 'info');
     }
   }
   
@@ -3609,6 +3645,7 @@ async function handleCardImagesUpload(input) {
   // 不强制要求文件系统，图片会保存到 IndexedDB（如果文件系统可用也会保存到文件夹）
   await checkFileSystem(false);
   
+  let savedCount = 0;
   for (const file of files) {
     // 检查文件类型
     if (!file.type.startsWith('image/')) {
@@ -3625,8 +3662,9 @@ async function handleCardImagesUpload(input) {
     const fileName = generateImageFileName('card');
     
     try {
-      await saveImageToFile(file, fileName);
+      await saveImageToFile(file, fileName, savedCount === 0); // 仅第一张图片显示通知
       cardImagesList.push(fileName);
+      savedCount++;
       updateCardImagesPreview();
     } catch (e) {
       showToast('错误', '保存图片失败: ' + e.message, 'error');
@@ -3636,6 +3674,10 @@ async function handleCardImagesUpload(input) {
   
   // 清空input以便可以重复选择相同文件
   input.value = '';
+  
+  if (savedCount > 1) {
+    showToast('成功', `已添加 ${savedCount} 张图片`, 'success');
+  }
 }
 
 async function updateCardImagesPreview() {
@@ -3836,10 +3878,8 @@ async function updateEditCardImagesPreview() {
   let html = '';
   for (let i = 0; i < editCardImagesList.length; i++) {
     const fileName = editCardImagesList[i];
-    let imgSrc = '';
-    if (useFileSystem) {
-      imgSrc = await loadImageFromFile(fileName) || '';
-    }
+    // 智能加载图片：优先文件系统，失败则从 IndexedDB 加载
+    let imgSrc = await loadImageFromFile(fileName) || '';
     
     html += `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
@@ -4303,10 +4343,17 @@ function exportToExcel() {
   
   setTimeout(() => {
     try {
-      const data = [['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '标记删除', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量']];
-      cards.forEach(c => data.push([
-        c.name, 
-        c.no, 
+      // 分离活跃卡牌和已删除卡牌
+      const activeCards = cards.filter(c => !c.markedForDelete);
+      const deletedCards = cards.filter(c => c.markedForDelete);
+      
+      const headers = ['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量'];
+      
+      // 活跃卡牌数据
+      const activeData = [headers];
+      activeCards.forEach(c => activeData.push([
+        c.name || '', 
+        c.no || '', 
         c.cardType || '裸卡', 
         c.gradingOrg || '', 
         c.language || '中文', 
@@ -4314,8 +4361,7 @@ function exportToExcel() {
         c.sourceLink || '', 
         c.purchaseTrackingNo || '', 
         c.saleTrackingNo || '', 
-        c.markedForDelete ? '是' : '否', 
-        c.qty,
+        c.qty || 1,
         c.purchaseQty || 0,
         c.saleQty || 0,
         c.purchasePrice || 0, 
@@ -4329,11 +4375,47 @@ function exportToExcel() {
         c.purchaseVouchers ? c.purchaseVouchers.length : 0,
         c.saleVouchers ? c.saleVouchers.length : 0
       ]));
+      
+      // 已删除卡牌数据
+      const deletedData = [headers];
+      deletedCards.forEach(c => deletedData.push([
+        c.name || '', 
+        c.no || '', 
+        c.cardType || '裸卡', 
+        c.gradingOrg || '', 
+        c.language || '中文', 
+        c.source || '', 
+        c.sourceLink || '', 
+        c.purchaseTrackingNo || '', 
+        c.saleTrackingNo || '', 
+        c.qty || 1,
+        c.purchaseQty || 0,
+        c.saleQty || 0,
+        c.purchasePrice || 0, 
+        c.purchaseCurrency || 'CNY', 
+        c.marketPrice || 0, 
+        c.marketCurrency || 'CNY', 
+        c.salePrice || 0, 
+        c.saleCurrency || 'CNY',
+        c.isInStock ? '是' : '否',
+        c.images ? c.images.length : (c.image ? 1 : 0),
+        c.purchaseVouchers ? c.purchaseVouchers.length : 0,
+        c.saleVouchers ? c.saleVouchers.length : 0
+      ]));
+      
+      // 创建工作簿并添加工作表
       const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(data);
-      XLSX.utils.book_append_sheet(wb, ws, 'TCG');
+      const activeWs = XLSX.utils.aoa_to_sheet(activeData);
+      XLSX.utils.book_append_sheet(wb, activeWs, '卡牌收藏');
+      
+      // 如果有已删除卡牌，添加第二个工作表
+      if (deletedCards.length > 0) {
+        const deletedWs = XLSX.utils.aoa_to_sheet(deletedData);
+        XLSX.utils.book_append_sheet(wb, deletedWs, '已删除卡牌');
+      }
+      
       XLSX.writeFile(wb, 'TCG_Collection.xlsx');
-      showToast('成功', 'Excel文件已导出');
+      showToast('成功', `已导出 ${activeCards.length} 张卡牌，${deletedCards.length} 张已删除卡牌`);
     } catch (err) {
       showToast('错误', '导出失败：' + err.message, 'error');
     }
@@ -4549,13 +4631,11 @@ async function loadTableImages() {
     await initFileSystem();
   }
   
-  // 如果仍然没有使用文件系统，检查是否需要提示用户
+  // 如果仍然没有使用文件系统，显示提示但继续尝试从 IndexedDB 加载
   if (!useFileSystem && cards.some(card => card.images && card.images.length > 0)) {
-    // 有图片但文件系统不可用，只显示提示，不强制弹窗
     setTimeout(() => {
-      showToast('提示', '💡 检测到卡牌图片存储在本地文件夹，但当前无法访问。点击"卡牌收藏"旁的文件夹按钮重新设置', 'info');
+      showToast('提示', '💡 图片将从浏览器缓存加载，设置本地文件夹可永久保存', 'info');
     }, 1000);
-    return;
   }
   
   const placeholders = document.querySelectorAll('.image-placeholder[data-original-index]');

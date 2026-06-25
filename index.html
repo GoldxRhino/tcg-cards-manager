@@ -1239,8 +1239,17 @@ async function openDB(name, version, upgradeCallback) {
         console.log('[DEBUG] openDB - 创建 store: images');
       }
       
+      // 处理外部传入的 upgrade 回调（兼容函数和对象两种形式）
       if (upgradeCallback) {
-        upgradeCallback(db);
+        try {
+          if (typeof upgradeCallback === 'function') {
+            upgradeCallback(db);
+          } else if (upgradeCallback.upgrade && typeof upgradeCallback.upgrade === 'function') {
+            upgradeCallback.upgrade(db);
+          }
+        } catch (cbErr) {
+          console.error('[DEBUG] openDB - upgrade 回调执行出错:', cbErr);
+        }
       }
     };
     

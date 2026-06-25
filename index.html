@@ -1141,8 +1141,10 @@ function updateStorageButton() {
 
 // === 保存目录句柄到 IndexedDB ===
 async function saveDirectoryHandle(handle) {
+  console.log('[DIAG] saveDirectoryHandle - 开始保存句柄');
   const db = await openDB('TCGCardDB', 2, {
     upgrade(db) {
+      console.log('[DIAG] saveDirectoryHandle - upgrade 回调执行');
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');
       }
@@ -1151,7 +1153,9 @@ async function saveDirectoryHandle(handle) {
       }
     }
   });
+  console.log('[DIAG] saveDirectoryHandle - openDB 返回, db.version:', db.version, 'stores:', Array.from(db.objectStoreNames));
   await db.put('directoryHandles', handle, 'imageDirectory');
+  console.log('[DIAG] saveDirectoryHandle - 保存成功');
 }
 
 // === 保存图片到 IndexedDB（备份）===
@@ -1204,42 +1208,52 @@ async function deleteImageFromIndexedDB(fileName) {
 
 // === 简单的 IndexedDB 封装 ===
 async function openDB(name, version, upgradeCallback) {
-  // 先检查现有数据库版本，确保能触发 onupgradeneeded
+  // === DIAGNOSTIC: Log all existing databases ===
   const databases = await indexedDB.databases();
+  console.log('[DIAG] openDB - 所有数据库:', databases.map(d => ({name: d.name, version: d.version})));
+  
   const existingDb = databases.find(db => db.name === name);
+  console.log('[DIAG] openDB - 目标数据库:', name, '现有:', existingDb ? `version ${existingDb.version}` : '不存在');
   
   let openVersion = version;
   if (existingDb) {
-    // 如果现有版本 >= 请求版本，使用现有版本 + 1 来强制触发升级
     if (existingDb.version >= version) {
       openVersion = existingDb.version + 1;
-      console.log('[DEBUG] openDB - 现有版本:', existingDb.version, '使用升级版本:', openVersion);
+      console.log('[DIAG] openDB - 强制升级: 从', existingDb.version, '到', openVersion);
     }
   }
+  console.log('[DIAG] openDB - 最终使用版本:', openVersion);
   
   return new Promise((resolve, reject) => {
     const request = indexedDB.open(name, openVersion);
     
     request.onerror = () => {
-      console.error('[DEBUG] openDB - 打开数据库失败:', request.error);
+      console.error('[DIAG] openDB - 打开失败:', request.error);
       reject(request.error);
     };
     
     request.onupgradeneeded = (event) => {
-      console.log('[DEBUG] openDB - 数据库升级:', event.oldVersion, '->', event.newVersion);
+      console.log('[DIAG] openDB - onupgradeneeded 触发! 旧版本:', event.oldVersion, '新版本:', event.newVersion);
       const db = event.target.result;
       
-      // 确保创建所有必要的 store
+      console.log('[DIAG] openDB - 升级前 stores:', Array.from(db.objectStoreNames));
+      
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');
-        console.log('[DEBUG] openDB - 创建 store: directoryHandles');
-      }
-      if (!db.objectStoreNames.contains('images')) {
-        db.createObjectStore('images');
-        console.log('[DEBUG] openDB - 创建 store: images');
+        console.log('[DIAG] openDB - 已创建: directoryHandles');
+      } else {
+        console.log('[DIAG] openDB - directoryHandles 已存在');
       }
       
-      // 处理外部传入的 upgrade 回调（兼容函数和对象两种形式）
+      if (!db.objectStoreNames.contains('images')) {
+        db.createObjectStore('images');
+        console.log('[DIAG] openDB - 已创建: images');
+      } else {
+        console.log('[DIAG] openDB - images 已存在');
+      }
+      
+      console.log('[DIAG] openDB - 升级后 stores:', Array.from(db.objectStoreNames));
+      
       if (upgradeCallback) {
         try {
           if (typeof upgradeCallback === 'function') {
@@ -1248,14 +1262,22 @@ async function openDB(name, version, upgradeCallback) {
             upgradeCallback.upgrade(db);
           }
         } catch (cbErr) {
-          console.error('[DEBUG] openDB - upgrade 回调执行出错:', cbErr);
+          console.error('[DIAG] openDB - upgrade 回调出错:', cbErr);
         }
       }
     };
     
     request.onsuccess = () => {
       const db = request.result;
-      console.log('[DEBUG] openDB - 数据库打开成功，stores:', Array.from(db.objectStoreNames));
+      const storeNames = Array.from(db.objectStoreNames);
+      console.log('[DIAG] openDB - onsuccess! 版本:', db.version, 'stores:', storeNames);
+      
+      // 关键诊断：如果缺少必要 store，立即报错
+      const required = ['directoryHandles', 'images'];
+      const missing = required.filter(s => !storeNames.includes(s));
+      if (missing.length > 0) {
+        console.error('[DIAG] openDB - 致命错误：缺少 stores:', missing);
+      }
       
       // 包装 db 对象，添加 get/put/delete 方法
       db.get = function(storeName, key) {

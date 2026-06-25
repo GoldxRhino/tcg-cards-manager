@@ -1160,19 +1160,27 @@ async function saveDirectoryHandle(handle) {
 
 // === 保存图片到 IndexedDB（备份）===
 async function saveImageToIndexedDB(file, fileName) {
+  console.log('[DIAG] saveImageToIndexedDB - 开始备份:', fileName, 'file size:', file.size);
   try {
+    console.log('[DIAG] saveImageToIndexedDB - 读取文件 buffer');
     const arrayBuffer = await file.arrayBuffer();
+    console.log('[DIAG] saveImageToIndexedDB - buffer 读取完成, size:', arrayBuffer.byteLength);
+    
+    console.log('[DIAG] saveImageToIndexedDB - 打开数据库');
     const db = await openDB('TCGCardDB', 2, {
       upgrade(db) {
+        console.log('[DIAG] saveImageToIndexedDB - upgrade 回调');
         if (!db.objectStoreNames.contains('images')) {
           db.createObjectStore('images');
         }
       }
     });
+    console.log('[DIAG] saveImageToIndexedDB - 数据库打开成功');
+    
     await db.put('images', arrayBuffer, fileName);
-    console.log('[DEBUG] saveImageToIndexedDB - 图片备份成功:', fileName);
+    console.log('[DIAG] saveImageToIndexedDB - 图片备份成功:', fileName);
   } catch (e) {
-    console.error('[DEBUG] saveImageToIndexedDB - 备份失败:', e);
+    console.error('[DIAG] saveImageToIndexedDB - 备份失败:', e.name, e.message);
   }
 }
 
@@ -1325,19 +1333,24 @@ async function saveImageToFile(file, fileName, showNotification = false) {
   // 如果文件系统可用，同时保存到本地文件夹
   let localSaved = false;
   if (useFileSystem && imageDirectoryHandle) {
+    console.log('[DIAG] saveImageToFile - 开始文件系统保存流程');
     try {
+      console.log('[DIAG] saveImageToFile - 步骤1: 获取文件句柄');
       const fileHandle = await imageDirectoryHandle.getFileHandle(fileName, { create: true });
+      console.log('[DIAG] saveImageToFile - 步骤2: 创建可写流');
       const writable = await fileHandle.createWritable();
+      console.log('[DIAG] saveImageToFile - 步骤3: 写入文件内容');
       await writable.write(file);
+      console.log('[DIAG] saveImageToFile - 步骤4: 关闭流');
       await writable.close();
-      console.log('[DEBUG] saveImageToFile - 图片保存到文件夹成功:', fileName);
+      console.log('[DIAG] saveImageToFile - 文件系统保存成功:', fileName);
       localSaved = true;
       
       if (showNotification) {
         showToast('成功', '✅ 图片已保存到本地文件夹', 'success');
       }
     } catch (e) {
-      console.error('[DEBUG] saveImageToFile - 保存到文件夹失败:', e);
+      console.error('[DIAG] saveImageToFile - 文件系统保存失败:', e.name, e.message);
       // 文件夹保存失败不影响主流程，图片已备份到 IndexedDB
       if (showNotification) {
         showToast('提示', '图片已保存到浏览器缓存中', 'info');
@@ -1366,30 +1379,35 @@ async function saveImageToFile(file, fileName, showNotification = false) {
 
 // === 加载图片（智能切换：优先文件系统，失败则用 IndexedDB 备份）===
 async function loadImageFromFile(fileName) {
-  console.log('[DEBUG] loadImageFromFile - 开始加载图片:', { useFileSystem, imageDirectoryHandle: !!imageDirectoryHandle, fileName });
+  console.log('[DIAG] loadImageFromFile - 开始加载:', { useFileSystem, hasHandle: !!imageDirectoryHandle, fileName });
   
   // 优先尝试从文件系统加载
   if (useFileSystem && imageDirectoryHandle) {
     try {
+      console.log('[DIAG] loadImageFromFile - 尝试从文件系统加载');
       const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
+      console.log('[DIAG] loadImageFromFile - 获取到文件句柄');
       const file = await fileHandle.getFile();
+      console.log('[DIAG] loadImageFromFile - 获取到文件对象, size:', file.size);
       const url = URL.createObjectURL(file);
-      console.log('[DEBUG] loadImageFromFile - 从文件夹加载成功:', fileName);
+      console.log('[DIAG] loadImageFromFile - 文件系统加载成功:', fileName);
       return url;
     } catch (e) {
-      console.warn('[DEBUG] loadImageFromFile - 从文件夹加载失败:', e.message);
+      console.warn('[DIAG] loadImageFromFile - 文件系统加载失败:', e.name, e.message);
     }
   } else {
-    console.log('[DEBUG] loadImageFromFile - 文件系统不可用，直接尝试从备份加载');
+    console.log('[DIAG] loadImageFromFile - 文件系统不可用，跳过');
   }
   
   // 文件系统不可用或加载失败，尝试从 IndexedDB 备份加载
+  console.log('[DIAG] loadImageFromFile - 尝试从 IndexedDB 加载');
   const backupUrl = await loadImageFromIndexedDB(fileName);
   if (backupUrl) {
+    console.log('[DIAG] loadImageFromFile - IndexedDB 加载成功');
     return backupUrl;
   }
   
-  console.log('[DEBUG] loadImageFromFile - 所有来源都无法加载:', fileName);
+  console.log('[DIAG] loadImageFromFile - 所有来源都无法加载:', fileName);
   return null;
 }
 

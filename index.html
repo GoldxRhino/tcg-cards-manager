@@ -661,6 +661,9 @@ let imageDirectoryHandle = null; // 图片文件夹句柄
 let useFileSystem = false; // 是否使用文件系统存储
 const IMAGE_DIR_NAME = 'tcg-card-images'; // 图片文件夹名称
 
+// === IndexedDB 全局连接 ===
+let cardDB = null; // 全局数据库连接，只打开一次
+
 // 更新已删除卡牌数量显示
 function updateDeletedCount() {
   const deletedCount = cards.filter(card => card.markedForDelete).length;
@@ -733,6 +736,11 @@ function initApp() {
   
   // 确保已删除数量正确显示
   updateDeletedCount();
+  
+  // 初始化数据库（只调用一次）
+  initDB().catch(e => {
+    console.error('数据库初始化失败:', e);
+  });
   
   // 初始化文件系统（如果之前已授权），并检查是否需要提示用户设置
   initFileSystem();
@@ -1014,7 +1022,7 @@ async function initFileSystem() {
   
   // 尝试从 IndexedDB 恢复之前的目录句柄
   try {
-    const db = await openDB('TCGCardDB', 2);
+    const db = await getDB();
     const handle = await db.get('directoryHandles', 'imageDirectory');
     console.log('[DEBUG] initFileSystem - 从 IndexedDB 获取句柄:', handle ? '成功' : '失败');
     
@@ -1142,18 +1150,7 @@ function updateStorageButton() {
 // === 保存目录句柄到 IndexedDB ===
 async function saveDirectoryHandle(handle) {
   console.log('[DIAG] saveDirectoryHandle - 开始保存句柄');
-  const db = await openDB('TCGCardDB', 2, {
-    upgrade(db) {
-      console.log('[DIAG] saveDirectoryHandle - upgrade 回调执行');
-      if (!db.objectStoreNames.contains('directoryHandles')) {
-        db.createObjectStore('directoryHandles');
-      }
-      if (!db.objectStoreNames.contains('images')) {
-        db.createObjectStore('images');
-      }
-    }
-  });
-  console.log('[DIAG] saveDirectoryHandle - openDB 返回, db.version:', db.version, 'stores:', Array.from(db.objectStoreNames));
+  const db = await getDB();
   await db.put('directoryHandles', handle, 'imageDirectory');
   console.log('[DIAG] saveDirectoryHandle - 保存成功');
 }
@@ -1179,16 +1176,8 @@ async function saveImageToIndexedDB(file, fileName) {
       return;
     }
     
-    console.log('[DIAG] saveImageToIndexedDB - 打开数据库');
-    const db = await openDB('TCGCardDB', 2, {
-      upgrade(db) {
-        console.log('[DIAG] saveImageToIndexedDB - upgrade 回调');
-        if (!db.objectStoreNames.contains('images')) {
-          db.createObjectStore('images');
-        }
-      }
-    });
-    console.log('[DIAG] saveImageToIndexedDB - 数据库打开成功');
+    console.log('[DIAG] saveImageToIndexedDB - 获取数据库连接');
+    const db = await getDB();
     
     await db.put('images', arrayBuffer, fileName);
     console.log('[DIAG] saveImageToIndexedDB - 图片备份成功:', fileName);
@@ -1200,7 +1189,7 @@ async function saveImageToIndexedDB(file, fileName) {
 // === 从 IndexedDB 读取图片 ===
 async function loadImageFromIndexedDB(fileName) {
   try {
-    const db = await openDB('TCGCardDB', 2);
+    const db = await getDB();
     const arrayBuffer = await db.get('images', fileName);
     
     // 检查数据是否存在且不为空
@@ -1229,7 +1218,7 @@ async function loadImageFromIndexedDB(fileName) {
 // === 从 IndexedDB 删除图片备份 ===
 async function deleteImageFromIndexedDB(fileName) {
   try {
-    const db = await openDB('TCGCardDB', 2);
+    const db = await getDB();
     await db.delete('images', fileName);
     console.log('[DEBUG] deleteImageFromIndexedDB - 删除备份成功:', fileName);
   } catch (e) {
@@ -1237,83 +1226,61 @@ async function deleteImageFromIndexedDB(fileName) {
   }
 }
 
-// === 简单的 IndexedDB 封装 ===
-async function openDB(name, version, upgradeCallback) {
-  // === DIAGNOSTIC: Log all existing databases ===
+// === IndexedDB 初始化（只调用一次）===
+async function initDB() {
+  const DB_NAME = 'TCGCardDB';
+  const DB_VERSION = 2;
+  
+  // 检查现有数据库版本，如果版本过高（之前的bug导致），删除重建
   const databases = await indexedDB.databases();
-  console.log('[DIAG] openDB - 所有数据库:', databases.map(d => ({name: d.name, version: d.version})));
+  const existingDb = databases.find(db => db.name === DB_NAME);
   
-  const existingDb = databases.find(db => db.name === name);
-  console.log('[DIAG] openDB - 目标数据库:', name, '现有:', existingDb ? `version ${existingDb.version}` : '不存在');
-  
-  let openVersion = version;
-  if (existingDb) {
-    if (existingDb.version >= version) {
-      openVersion = existingDb.version + 1;
-      console.log('[DIAG] openDB - 强制升级: 从', existingDb.version, '到', openVersion);
-    }
+  if (existingDb && existingDb.version > 10) {
+    console.log('[DIAG] initDB - 检测到版本过高:', existingDb.version, '删除重建');
+    await new Promise((resolve, reject) => {
+      const deleteReq = indexedDB.deleteDatabase(DB_NAME);
+      deleteReq.onsuccess = () => {
+        console.log('[DIAG] initDB - 旧数据库已删除');
+        resolve();
+      };
+      deleteReq.onerror = () => {
+        console.error('[DIAG] initDB - 删除旧数据库失败');
+        resolve(); // 继续尝试打开
+      };
+    });
   }
-  console.log('[DIAG] openDB - 最终使用版本:', openVersion);
   
   return new Promise((resolve, reject) => {
-    const request = indexedDB.open(name, openVersion);
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
     
     request.onerror = () => {
-      console.error('[DIAG] openDB - 打开失败:', request.error);
+      console.error('[DIAG] initDB - 打开失败:', request.error);
       reject(request.error);
     };
     
     request.onupgradeneeded = (event) => {
-      console.log('[DIAG] openDB - onupgradeneeded 触发! 旧版本:', event.oldVersion, '新版本:', event.newVersion);
+      console.log('[DIAG] initDB - onupgradeneeded:', event.oldVersion, '→', event.newVersion);
       const db = event.target.result;
-      
-      console.log('[DIAG] openDB - 升级前 stores:', Array.from(db.objectStoreNames));
       
       if (!db.objectStoreNames.contains('directoryHandles')) {
         db.createObjectStore('directoryHandles');
-        console.log('[DIAG] openDB - 已创建: directoryHandles');
-      } else {
-        console.log('[DIAG] openDB - directoryHandles 已存在');
+        console.log('[DIAG] initDB - 创建 store: directoryHandles');
       }
       
       if (!db.objectStoreNames.contains('images')) {
         db.createObjectStore('images');
-        console.log('[DIAG] openDB - 已创建: images');
-      } else {
-        console.log('[DIAG] openDB - images 已存在');
-      }
-      
-      console.log('[DIAG] openDB - 升级后 stores:', Array.from(db.objectStoreNames));
-      
-      if (upgradeCallback) {
-        try {
-          if (typeof upgradeCallback === 'function') {
-            upgradeCallback(db);
-          } else if (upgradeCallback.upgrade && typeof upgradeCallback.upgrade === 'function') {
-            upgradeCallback.upgrade(db);
-          }
-        } catch (cbErr) {
-          console.error('[DIAG] openDB - upgrade 回调出错:', cbErr);
-        }
+        console.log('[DIAG] initDB - 创建 store: images');
       }
     };
     
     request.onsuccess = () => {
-      const db = request.result;
-      const storeNames = Array.from(db.objectStoreNames);
-      console.log('[DIAG] openDB - onsuccess! 版本:', db.version, 'stores:', storeNames);
+      cardDB = request.result;
+      console.log('[DIAG] initDB - 成功! 版本:', cardDB.version, 'stores:', Array.from(cardDB.objectStoreNames));
       
-      // 关键诊断：如果缺少必要 store，立即报错
-      const required = ['directoryHandles', 'images'];
-      const missing = required.filter(s => !storeNames.includes(s));
-      if (missing.length > 0) {
-        console.error('[DIAG] openDB - 致命错误：缺少 stores:', missing);
-      }
-      
-      // 包装 db 对象，添加 get/put/delete 方法
-      db.get = function(storeName, key) {
+      // 添加 get/put/delete 方法
+      cardDB.get = function(storeName, key) {
         return new Promise((res, rej) => {
-          const tx = db.transaction(storeName, 'readonly');
+          const tx = cardDB.transaction(storeName, 'readonly');
           const store = tx.objectStore(storeName);
           const req = store.get(key);
           req.onsuccess = () => res(req.result);
@@ -1321,9 +1288,9 @@ async function openDB(name, version, upgradeCallback) {
         });
       };
       
-      db.put = function(storeName, value, key) {
+      cardDB.put = function(storeName, value, key) {
         return new Promise((res, rej) => {
-          const tx = db.transaction(storeName, 'readwrite');
+          const tx = cardDB.transaction(storeName, 'readwrite');
           const store = tx.objectStore(storeName);
           const req = store.put(value, key);
           req.onsuccess = () => res(req.result);
@@ -1331,9 +1298,9 @@ async function openDB(name, version, upgradeCallback) {
         });
       };
       
-      db.delete = function(storeName, key) {
+      cardDB.delete = function(storeName, key) {
         return new Promise((res, rej) => {
-          const tx = db.transaction(storeName, 'readwrite');
+          const tx = cardDB.transaction(storeName, 'readwrite');
           const store = tx.objectStore(storeName);
           const req = store.delete(key);
           req.onsuccess = () => res();
@@ -1341,9 +1308,17 @@ async function openDB(name, version, upgradeCallback) {
         });
       };
       
-      resolve(db);
+      resolve(cardDB);
     };
   });
+}
+
+// === 获取数据库连接（自动初始化）===
+async function getDB() {
+  if (!cardDB) {
+    await initDB();
+  }
+  return cardDB;
 }
 
 // === 保存图片（混合存储：文件系统 + IndexedDB 备份）===

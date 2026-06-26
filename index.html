@@ -682,7 +682,7 @@ let currentCard = null;
 let elements = {};
 
 // === 初始化函数 ===
-function initApp() {
+async function initApp() {
   elements = {
     body: document.getElementById('cardBody'),
     curLabel: document.getElementById('curLabel'),
@@ -737,10 +737,13 @@ function initApp() {
   // 确保已删除数量正确显示
   updateDeletedCount();
   
-  // 初始化数据库（只调用一次）
-  initDB().catch(e => {
+  // 初始化数据库（只调用一次），确保完成后再初始化文件系统
+  try {
+    await initDB();
+    console.log('[DIAG] initApp - 数据库初始化完成');
+  } catch (e) {
     console.error('数据库初始化失败:', e);
-  });
+  }
   
   // 初始化文件系统（如果之前已授权），并检查是否需要提示用户设置
   initFileSystem();
@@ -5533,7 +5536,7 @@ function editCard(index) {
         purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo').value.trim(),
         saleTrackingNo: document.getElementById('cardSaleTrackingNo').value.trim(),
         markedForDelete: cards[index].markedForDelete,
-        images: editCardImagesList.length > 0 ? editCardImagesList : existingImages,
+        images: editCardImagesList,
         qty: parseInt(document.getElementById('cardQty').value) || 1,
         purchaseQty: parseInt(document.getElementById('cardPurchaseQty').value) || 0,
         saleQty: parseInt(document.getElementById('cardSaleQty').value) || 0,
@@ -5544,13 +5547,13 @@ function editCard(index) {
         salePrice: salePrice,
         saleCurrency: saleCurrency,
         isInStock: document.getElementById('isInStock')?.checked || false,
-        purchaseVouchers: editPurchaseVouchersList.length > 0 ? editPurchaseVouchersList : existingPurchaseVouchers,
-        saleVouchers: editSaleVouchersList.length > 0 ? editSaleVouchersList : existingSaleVouchers,
+        purchaseVouchers: editPurchaseVouchersList,
+        saleVouchers: editSaleVouchersList,
         // 送评相关字段
         isSubmitting: document.getElementById('isSubmitting')?.checked || false,
         submittingOrg: document.getElementById('submittingOrg')?.value || '',
         submittingMethod: document.getElementById('submittingMethod')?.value || '',
-        submittingVouchers: editSubmittingVouchersList.length > 0 ? editSubmittingVouchersList : (cards[index].submittingVouchers || [])
+        submittingVouchers: editSubmittingVouchersList
       };
       save();
       render();

@@ -2931,7 +2931,7 @@ function showStats() {
   cards.forEach(card => {
     const type = card.gradingOrg || '无评级';
     cardTypeCount[type] = (cardTypeCount[type] || 0) + (parseInt(card.qty) || 0);
-    totalValue += (parseFloat(card.price) || 0) * (parseInt(card.qty) || 0);
+    totalValue += (parseFloat(card.purchasePrice) || 0) * (parseInt(card.purchaseQty) || 0);
   });
   
   const content = `
@@ -3427,16 +3427,18 @@ function updateStock() {
     }
   }
   
-  // 计算利润
+  // 计算利润（基于数量）
   if (purchasePriceInput && salePriceInput && profitPreview) {
     const purchasePrice = parseFloat(purchasePriceInput.value) || 0;
     const purchaseCurrency = purchaseCurrencySelect ? purchaseCurrencySelect.value : 'CNY';
+    const purchaseQty = parseInt(purchaseQtyInput.value) || 0;
     const salePrice = parseFloat(salePriceInput.value) || 0;
     const saleCurrency = saleCurrencySelect ? saleCurrencySelect.value : 'CNY';
+    const saleQty = parseInt(saleQtyInput.value) || 0;
     
-    // 统一转换为CNY计算
-    const purchaseInCNY = purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency];
-    const saleInCNY = saleCurrency === 'CNY' ? salePrice : salePrice / rate[saleCurrency];
+    // 统一转换为CNY计算（使用总价）
+    const purchaseInCNY = (purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency]) * purchaseQty;
+    const saleInCNY = (saleCurrency === 'CNY' ? salePrice : salePrice / rate[saleCurrency]) * saleQty;
     
     const profit = saleInCNY - purchaseInCNY;
     
@@ -5006,7 +5008,7 @@ function render(data = null) {
     const originalIndex = cards.indexOf(card);
     
     totalQty += parseInt(card.qty) || 0;
-    totalValue += (parseFloat(card.purchasePrice) || 0) * (parseInt(card.qty) || 0);
+    totalValue += (parseFloat(card.purchasePrice) || 0) * (parseInt(card.purchaseQty) || 0);
     
     const tr = document.createElement('tr');
     // 斑马纹效果
@@ -5015,7 +5017,8 @@ function render(data = null) {
     const cardTypeClass = card.gradingOrg ? 'bg-gradient-to-r from-purple-500 to-purple-600 text-white' : 'bg-gradient-to-r from-gray-400 to-gray-500 text-white';
     
     // 计算各价格（按当前汇率换算）
-    const purchasePriceConverted = ((card.purchasePrice || 0) * getRate(card.purchaseCurrency)).toFixed(0);
+    // 购入总价 = 购入数量 × 购入单价 × 汇率
+    const purchasePriceConverted = (((card.purchasePrice || 0) * (card.purchaseQty || 1)) * getRate(card.purchaseCurrency)).toFixed(0);
     const marketPriceConverted = ((card.marketPrice || 0) * getRate(card.marketCurrency)).toFixed(0);
     const salePriceConverted = ((card.salePrice || 0) * getRate(card.saleCurrency)).toFixed(0);
     

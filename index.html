@@ -1453,7 +1453,12 @@ async function deleteImageFile(fileName) {
       await imageDirectoryHandle.removeEntry(fileName);
       console.log('[DEBUG] deleteImageFile - 从文件夹删除成功:', fileName);
     } catch (e) {
-      console.warn('[DEBUG] deleteImageFile - 从文件夹删除失败:', fileName, e);
+      // 文件不存在是正常情况（可能之前保存失败），不需要报错
+      if (e.name === 'NotFoundError') {
+        console.log('[DEBUG] deleteImageFile - 文件不存在，跳过:', fileName);
+      } else {
+        console.warn('[DEBUG] deleteImageFile - 从文件夹删除失败:', fileName, e.name);
+      }
     }
   }
   
@@ -4962,7 +4967,8 @@ async function loadTableImages() {
         img.src = imgSrc;
         img.className = 'w-7 h-9 object-cover rounded border border-gray-200 dark:border-gray-600 cursor-pointer hover:scale-150 transition-transform';
         img.onerror = function() {
-          this.style.display = 'none';
+          // 图片加载失败，显示占位符
+          placeholder.innerHTML = '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>';
         };
         
         placeholder.innerHTML = '';
@@ -4971,9 +4977,14 @@ async function loadTableImages() {
         img.onclick = function() {
           openImagePreview(imgSrc);
         };
+      } else {
+        // 图片不存在，显示占位符
+        placeholder.innerHTML = '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>';
       }
     } catch (e) {
       console.error('加载图片失败:', fileName, e);
+      // 加载出错，显示占位符
+      placeholder.innerHTML = '<div class="w-7 h-9 bg-gray-100 dark:bg-gray-700 rounded flex items-center justify-center"><i class="fa fa-image text-gray-300 text-[10px]"></i></div>';
     }
   });
   

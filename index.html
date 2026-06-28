@@ -4638,18 +4638,23 @@ function exportToExcel() {
       const activeCards = cards.filter(c => !c.markedForDelete);
       const deletedCards = cards.filter(c => c.markedForDelete);
       
-      const headers = ['名称', '编号', '类型', '评级机构', '语言', '来源', '来源链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量'];
+      const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量', '是否送评', '送评机构', '送评途径', '送评凭证数量'];
       
       // 活跃卡牌数据
       const activeData = [headers];
       activeCards.forEach(c => activeData.push([
         c.name || '', 
+        c.category || '其他', 
+        c.series || '', 
         c.no || '', 
         c.cardType || '裸卡', 
         c.gradingOrg || '', 
+        c.groups ? c.groups.join(', ') : '', 
         c.language || '中文', 
         c.source || '', 
         c.sourceLink || '', 
+        c.saleSource || '', 
+        c.saleLink || '', 
         c.purchaseTrackingNo || '', 
         c.saleTrackingNo || '', 
         c.qty || 1,
@@ -4664,19 +4669,28 @@ function exportToExcel() {
         c.isInStock ? '是' : '否',
         c.images ? c.images.length : (c.image ? 1 : 0),
         c.purchaseVouchers ? c.purchaseVouchers.length : 0,
-        c.saleVouchers ? c.saleVouchers.length : 0
+        c.saleVouchers ? c.saleVouchers.length : 0,
+        c.isSubmitting ? '是' : '否',
+        c.submittingOrg || '',
+        c.submittingMethod || '',
+        c.submittingVouchers ? c.submittingVouchers.length : 0
       ]));
       
       // 已删除卡牌数据
       const deletedData = [headers];
       deletedCards.forEach(c => deletedData.push([
         c.name || '', 
+        c.category || '其他', 
+        c.series || '', 
         c.no || '', 
         c.cardType || '裸卡', 
         c.gradingOrg || '', 
+        c.groups ? c.groups.join(', ') : '', 
         c.language || '中文', 
         c.source || '', 
         c.sourceLink || '', 
+        c.saleSource || '', 
+        c.saleLink || '', 
         c.purchaseTrackingNo || '', 
         c.saleTrackingNo || '', 
         c.qty || 1,
@@ -4691,7 +4705,11 @@ function exportToExcel() {
         c.isInStock ? '是' : '否',
         c.images ? c.images.length : (c.image ? 1 : 0),
         c.purchaseVouchers ? c.purchaseVouchers.length : 0,
-        c.saleVouchers ? c.saleVouchers.length : 0
+        c.saleVouchers ? c.saleVouchers.length : 0,
+        c.isSubmitting ? '是' : '否',
+        c.submittingOrg || '',
+        c.submittingMethod || '',
+        c.submittingVouchers ? c.submittingVouchers.length : 0
       ]));
       
       // 创建工作簿并添加工作表

@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TCG卡牌管理工具</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-populate@1.21.0/browser/xlsx-populate.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
@@ -4628,107 +4629,171 @@ function clearSearch() {
   search.focus();
 }
 
-// === Excel 导出 ===
-function exportToExcel() {
+async function readImageAsBase64(fileName) {
+  try {
+    if (useFileSystem && imageDirectoryHandle) {
+      const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
+      const file = await fileHandle.getFile();
+      const arrayBuffer = await file.arrayBuffer();
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      return `data:${file.type};base64,${base64}`;
+    } else {
+      const db = await getDB();
+      const arrayBuffer = await db.get('images', fileName);
+      if (!arrayBuffer) return null;
+      const blob = new Blob([arrayBuffer], { type: 'image/webp' });
+      const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
+      return `data:image/webp;base64,${base64}`;
+    }
+  } catch (e) {
+    console.error('读取图片失败:', fileName, e);
+    return null;
+  }
+}
+
+async function exportToExcel() {
   showToast('导出中', '正在生成Excel文件...', 'info');
   
-  setTimeout(() => {
-    try {
-      // 分离活跃卡牌和已删除卡牌
-      const activeCards = cards.filter(c => !c.markedForDelete);
-      const deletedCards = cards.filter(c => c.markedForDelete);
+  try {
+    const activeCards = cards.filter(c => !c.markedForDelete);
+    const deletedCards = cards.filter(c => c.markedForDelete);
+    
+    const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片', '购入凭证', '出售凭证', '是否送评', '送评机构', '送评途径', '送评凭证'];
+    
+    const wb = await xlsxPopulate.fromBlankAsync();
+    
+    const addCardsToSheet = async (sheetName, cardList) => {
+      const sheet = wb.addSheet(sheetName);
       
-      const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片数量', '购入凭证数量', '出售凭证数量', '是否送评', '送评机构', '送评途径', '送评凭证数量'];
-      
-      // 活跃卡牌数据
-      const activeData = [headers];
-      activeCards.forEach(c => activeData.push([
-        c.name || '', 
-        c.category || '其他', 
-        c.series || '', 
-        c.no || '', 
-        c.cardType || '裸卡', 
-        c.gradingOrg || '', 
-        c.groups ? c.groups.join(', ') : '', 
-        c.language || '中文', 
-        c.source || '', 
-        c.sourceLink || '', 
-        c.saleSource || '', 
-        c.saleLink || '', 
-        c.purchaseTrackingNo || '', 
-        c.saleTrackingNo || '', 
-        c.qty || 1,
-        c.purchaseQty || 0,
-        c.saleQty || 0,
-        c.purchasePrice || 0, 
-        c.purchaseCurrency || 'CNY', 
-        c.marketPrice || 0, 
-        c.marketCurrency || 'CNY', 
-        c.salePrice || 0, 
-        c.saleCurrency || 'CNY',
-        c.isInStock ? '是' : '否',
-        c.images ? c.images.length : (c.image ? 1 : 0),
-        c.purchaseVouchers ? c.purchaseVouchers.length : 0,
-        c.saleVouchers ? c.saleVouchers.length : 0,
-        c.isSubmitting ? '是' : '否',
-        c.submittingOrg || '',
-        c.submittingMethod || '',
-        c.submittingVouchers ? c.submittingVouchers.length : 0
-      ]));
-      
-      // 已删除卡牌数据
-      const deletedData = [headers];
-      deletedCards.forEach(c => deletedData.push([
-        c.name || '', 
-        c.category || '其他', 
-        c.series || '', 
-        c.no || '', 
-        c.cardType || '裸卡', 
-        c.gradingOrg || '', 
-        c.groups ? c.groups.join(', ') : '', 
-        c.language || '中文', 
-        c.source || '', 
-        c.sourceLink || '', 
-        c.saleSource || '', 
-        c.saleLink || '', 
-        c.purchaseTrackingNo || '', 
-        c.saleTrackingNo || '', 
-        c.qty || 1,
-        c.purchaseQty || 0,
-        c.saleQty || 0,
-        c.purchasePrice || 0, 
-        c.purchaseCurrency || 'CNY', 
-        c.marketPrice || 0, 
-        c.marketCurrency || 'CNY', 
-        c.salePrice || 0, 
-        c.saleCurrency || 'CNY',
-        c.isInStock ? '是' : '否',
-        c.images ? c.images.length : (c.image ? 1 : 0),
-        c.purchaseVouchers ? c.purchaseVouchers.length : 0,
-        c.saleVouchers ? c.saleVouchers.length : 0,
-        c.isSubmitting ? '是' : '否',
-        c.submittingOrg || '',
-        c.submittingMethod || '',
-        c.submittingVouchers ? c.submittingVouchers.length : 0
-      ]));
-      
-      // 创建工作簿并添加工作表
-      const wb = XLSX.utils.book_new();
-      const activeWs = XLSX.utils.aoa_to_sheet(activeData);
-      XLSX.utils.book_append_sheet(wb, activeWs, '卡牌收藏');
-      
-      // 如果有已删除卡牌，添加第二个工作表
-      if (deletedCards.length > 0) {
-        const deletedWs = XLSX.utils.aoa_to_sheet(deletedData);
-        XLSX.utils.book_append_sheet(wb, deletedWs, '已删除卡牌');
+      for (let col = 0; col < headers.length; col++) {
+        sheet.cell(1, col + 1).value(headers[col]);
       }
       
-      XLSX.writeFile(wb, 'TCG_Collection.xlsx');
-      showToast('成功', `已导出 ${activeCards.length} 张卡牌，${deletedCards.length} 张已删除卡牌`);
-    } catch (err) {
-      showToast('错误', '导出失败：' + err.message, 'error');
+      let row = 2;
+      for (const c of cardList) {
+        sheet.cell(row, 1).value(c.name || '');
+        sheet.cell(row, 2).value(c.category || '其他');
+        sheet.cell(row, 3).value(c.series || '');
+        sheet.cell(row, 4).value(c.no || '');
+        sheet.cell(row, 5).value(c.cardType || '裸卡');
+        sheet.cell(row, 6).value(c.gradingOrg || '');
+        sheet.cell(row, 7).value(c.groups ? c.groups.join(', ') : '');
+        sheet.cell(row, 8).value(c.language || '中文');
+        sheet.cell(row, 9).value(c.source || '');
+        sheet.cell(row, 10).value(c.sourceLink || '');
+        sheet.cell(row, 11).value(c.saleSource || '');
+        sheet.cell(row, 12).value(c.saleLink || '');
+        sheet.cell(row, 13).value(c.purchaseTrackingNo || '');
+        sheet.cell(row, 14).value(c.saleTrackingNo || '');
+        sheet.cell(row, 15).value(c.qty || 1);
+        sheet.cell(row, 16).value(c.purchaseQty || 0);
+        sheet.cell(row, 17).value(c.saleQty || 0);
+        sheet.cell(row, 18).value(c.purchasePrice || 0);
+        sheet.cell(row, 19).value(c.purchaseCurrency || 'CNY');
+        sheet.cell(row, 20).value(c.marketPrice || 0);
+        sheet.cell(row, 21).value(c.marketCurrency || 'CNY');
+        sheet.cell(row, 22).value(c.salePrice || 0);
+        sheet.cell(row, 23).value(c.saleCurrency || 'CNY');
+        sheet.cell(row, 24).value(c.isInStock ? '是' : '否');
+        
+        let currentCol = 25;
+        
+        const imageList = c.images || [];
+        for (const imgName of imageList) {
+          const base64 = await readImageAsBase64(imgName);
+          if (base64) {
+            try {
+              sheet.cell(row, currentCol).value('');
+              const imageId = await sheet.addImage(base64);
+              await sheet.image(imageId).position(currentCol - 1, row - 1);
+              await sheet.image(imageId).size(80, 100);
+            } catch (e) {
+              console.error('添加图片失败:', imgName, e);
+            }
+          }
+          currentCol++;
+        }
+        
+        const purchaseVouchers = c.purchaseVouchers || [];
+        for (const voucherName of purchaseVouchers) {
+          const base64 = await readImageAsBase64(voucherName);
+          if (base64) {
+            try {
+              sheet.cell(row, currentCol).value('');
+              const imageId = await sheet.addImage(base64);
+              await sheet.image(imageId).position(currentCol - 1, row - 1);
+              await sheet.image(imageId).size(80, 100);
+            } catch (e) {
+              console.error('添加购入凭证失败:', voucherName, e);
+            }
+          }
+          currentCol++;
+        }
+        
+        const saleVouchers = c.saleVouchers || [];
+        for (const voucherName of saleVouchers) {
+          const base64 = await readImageAsBase64(voucherName);
+          if (base64) {
+            try {
+              sheet.cell(row, currentCol).value('');
+              const imageId = await sheet.addImage(base64);
+              await sheet.image(imageId).position(currentCol - 1, row - 1);
+              await sheet.image(imageId).size(80, 100);
+            } catch (e) {
+              console.error('添加出售凭证失败:', voucherName, e);
+            }
+          }
+          currentCol++;
+        }
+        
+        sheet.cell(row, currentCol).value(c.isSubmitting ? '是' : '否');
+        currentCol++;
+        sheet.cell(row, currentCol).value(c.submittingOrg || '');
+        currentCol++;
+        sheet.cell(row, currentCol).value(c.submittingMethod || '');
+        currentCol++;
+        
+        const submittingVouchers = c.submittingVouchers || [];
+        for (const voucherName of submittingVouchers) {
+          const base64 = await readImageAsBase64(voucherName);
+          if (base64) {
+            try {
+              sheet.cell(row, currentCol).value('');
+              const imageId = await sheet.addImage(base64);
+              await sheet.image(imageId).position(currentCol - 1, row - 1);
+              await sheet.image(imageId).size(80, 100);
+            } catch (e) {
+              console.error('添加送评凭证失败:', voucherName, e);
+            }
+          }
+          currentCol++;
+        }
+        
+        row++;
+      }
+      
+      for (let col = 1; col <= headers.length; col++) {
+        sheet.column(col).width(15);
+      }
+      sheet.row(1).height(25);
+    };
+    
+    await addCardsToSheet('卡牌收藏', activeCards);
+    
+    if (deletedCards.length > 0) {
+      await addCardsToSheet('已删除卡牌', deletedCards);
     }
-  }, 100);
+    
+    if (wb.sheet('Sheet1')) {
+      wb.deleteSheet('Sheet1');
+    }
+    
+    await wb.downloadAsync('TCG_Collection.xlsx');
+    showToast('成功', `已导出 ${activeCards.length} 张卡牌，${deletedCards.length} 张已删除卡牌`);
+  } catch (err) {
+    console.error('导出失败:', err);
+    showToast('错误', '导出失败：' + err.message, 'error');
+  }
 }
 
 // === Excel 导入 ===

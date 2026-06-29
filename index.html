@@ -5,7 +5,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>TCG卡牌管理工具</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/exceljs@4.4.0/dist/exceljs.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
 <link href="https://cdn.jsdelivr.net/npm/font-awesome@4.7.0/css/font-awesome.min.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.8/dist/chart.umd.min.js"></script>
@@ -4629,20 +4628,20 @@ function clearSearch() {
   search.focus();
 }
 
-async function readImageAsBase64(fileName) {
+async function readImageAsDataUrl(fileName) {
   try {
     if (useFileSystem && imageDirectoryHandle) {
       const fileHandle = await imageDirectoryHandle.getFileHandle(fileName);
       const file = await fileHandle.getFile();
       const arrayBuffer = await file.arrayBuffer();
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      return { base64, type: file.type };
+      return `data:${file.type};base64,${base64}`;
     } else {
       const db = await getDB();
       const arrayBuffer = await db.get('images', fileName);
       if (!arrayBuffer) return null;
       const base64 = btoa(String.fromCharCode(...new Uint8Array(arrayBuffer)));
-      return { base64, type: 'image/webp' };
+      return `data:image/webp;base64,${base64}`;
     }
   } catch (e) {
     console.error('读取图片失败:', fileName, e);
@@ -4659,171 +4658,122 @@ async function exportToExcel() {
     
     const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片', '购入凭证', '出售凭证', '是否送评', '送评机构', '送评途径', '送评凭证'];
     
-    const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'TCG卡牌管理工具';
-    workbook.lastModifiedBy = 'TCG卡牌管理工具';
-    workbook.created = new Date();
-    workbook.modified = new Date();
+    let htmlContent = `
+<!DOCTYPE html>
+<html xmlns:o="urn:schemas-microsoft-com:office:office" xmlns:x="urn:schemas-microsoft-com:office:excel">
+<head>
+<meta charset="UTF-8">
+<style>
+table { border-collapse: collapse; width: 100%; }
+th, td { border: 1px solid #ddd; padding: 8px; text-align: center; vertical-align: middle; }
+th { background-color: #4f46e5; color: white; font-weight: bold; }
+img { max-width: 100px; max-height: 120px; object-fit: contain; }
+</style>
+</head>
+<body>
+`;
     
-    const addCardsToSheet = async (sheetName, cardList) => {
-      const worksheet = workbook.addWorksheet(sheetName);
+    const generateTable = async (title, cardList) => {
+      let tableHtml = `<h2>${title}</h2>`;
+      tableHtml += '<table>';
+      tableHtml += '<thead><tr>';
+      headers.forEach(h => tableHtml += `<th>${h}</th>`);
+      tableHtml += '</tr></thead><tbody>';
       
-      worksheet.columns = headers.map((header, index) => ({
-        header: header,
-        key: `col${index + 1}`,
-        width: header === '图片' || header === '购入凭证' || header === '出售凭证' || header === '送评凭证' ? 20 : 15
-      }));
-      
-      let row = 2;
       for (const c of cardList) {
-        worksheet.getRow(row).values = [
-          c.name || '',
-          c.category || '其他',
-          c.series || '',
-          c.no || '',
-          c.cardType || '裸卡',
-          c.gradingOrg || '',
-          c.groups ? c.groups.join(', ') : '',
-          c.language || '中文',
-          c.source || '',
-          c.sourceLink || '',
-          c.saleSource || '',
-          c.saleLink || '',
-          c.purchaseTrackingNo || '',
-          c.saleTrackingNo || '',
-          c.qty || 1,
-          c.purchaseQty || 0,
-          c.saleQty || 0,
-          c.purchasePrice || 0,
-          c.purchaseCurrency || 'CNY',
-          c.marketPrice || 0,
-          c.marketCurrency || 'CNY',
-          c.salePrice || 0,
-          c.saleCurrency || 'CNY',
-          c.isInStock ? '是' : '否'
-        ];
-        
-        let currentCol = 25;
+        tableHtml += '<tr>';
+        tableHtml += `<td>${c.name || ''}</td>`;
+        tableHtml += `<td>${c.category || '其他'}</td>`;
+        tableHtml += `<td>${c.series || ''}</td>`;
+        tableHtml += `<td>${c.no || ''}</td>`;
+        tableHtml += `<td>${c.cardType || '裸卡'}</td>`;
+        tableHtml += `<td>${c.gradingOrg || ''}</td>`;
+        tableHtml += `<td>${c.groups ? c.groups.join(', ') : ''}</td>`;
+        tableHtml += `<td>${c.language || '中文'}</td>`;
+        tableHtml += `<td>${c.source || ''}</td>`;
+        tableHtml += `<td>${c.sourceLink || ''}</td>`;
+        tableHtml += `<td>${c.saleSource || ''}</td>`;
+        tableHtml += `<td>${c.saleLink || ''}</td>`;
+        tableHtml += `<td>${c.purchaseTrackingNo || ''}</td>`;
+        tableHtml += `<td>${c.saleTrackingNo || ''}</td>`;
+        tableHtml += `<td>${c.qty || 1}</td>`;
+        tableHtml += `<td>${c.purchaseQty || 0}</td>`;
+        tableHtml += `<td>${c.saleQty || 0}</td>`;
+        tableHtml += `<td>${c.purchasePrice || 0}</td>`;
+        tableHtml += `<td>${c.purchaseCurrency || 'CNY'}</td>`;
+        tableHtml += `<td>${c.marketPrice || 0}</td>`;
+        tableHtml += `<td>${c.marketCurrency || 'CNY'}</td>`;
+        tableHtml += `<td>${c.salePrice || 0}</td>`;
+        tableHtml += `<td>${c.saleCurrency || 'CNY'}</td>`;
+        tableHtml += `<td>${c.isInStock ? '是' : '否'}</td>`;
         
         const imageList = c.images || [];
         for (const imgName of imageList) {
-          const imgData = await readImageAsBase64(imgName);
-          if (imgData) {
-            try {
-              const imageId = `img_${row}_${currentCol}_${Date.now()}`;
-              const image = workbook.addImage({
-                base64: imgData.base64,
-                extension: imgData.type.split('/')[1] || 'webp',
-                id: imageId
-              });
-              worksheet.addImage(image, {
-                tl: { col: currentCol - 1, row: row - 1 },
-                ext: { width: 80, height: 100 }
-              });
-            } catch (e) {
-              console.error('添加图片失败:', imgName, e);
-            }
+          const dataUrl = await readImageAsDataUrl(imgName);
+          if (dataUrl) {
+            tableHtml += `<td><img src="${dataUrl}" alt="卡牌图片"></td>`;
+          } else {
+            tableHtml += `<td></td>`;
           }
-          currentCol++;
         }
         
         const purchaseVouchers = c.purchaseVouchers || [];
         for (const voucherName of purchaseVouchers) {
-          const imgData = await readImageAsBase64(voucherName);
-          if (imgData) {
-            try {
-              const imageId = `pv_${row}_${currentCol}_${Date.now()}`;
-              const image = workbook.addImage({
-                base64: imgData.base64,
-                extension: imgData.type.split('/')[1] || 'webp',
-                id: imageId
-              });
-              worksheet.addImage(image, {
-                tl: { col: currentCol - 1, row: row - 1 },
-                ext: { width: 80, height: 100 }
-              });
-            } catch (e) {
-              console.error('添加购入凭证失败:', voucherName, e);
-            }
+          const dataUrl = await readImageAsDataUrl(voucherName);
+          if (dataUrl) {
+            tableHtml += `<td><img src="${dataUrl}" alt="购入凭证"></td>`;
+          } else {
+            tableHtml += `<td></td>`;
           }
-          currentCol++;
         }
         
         const saleVouchers = c.saleVouchers || [];
         for (const voucherName of saleVouchers) {
-          const imgData = await readImageAsBase64(voucherName);
-          if (imgData) {
-            try {
-              const imageId = `sv_${row}_${currentCol}_${Date.now()}`;
-              const image = workbook.addImage({
-                base64: imgData.base64,
-                extension: imgData.type.split('/')[1] || 'webp',
-                id: imageId
-              });
-              worksheet.addImage(image, {
-                tl: { col: currentCol - 1, row: row - 1 },
-                ext: { width: 80, height: 100 }
-              });
-            } catch (e) {
-              console.error('添加出售凭证失败:', voucherName, e);
-            }
+          const dataUrl = await readImageAsDataUrl(voucherName);
+          if (dataUrl) {
+            tableHtml += `<td><img src="${dataUrl}" alt="出售凭证"></td>`;
+          } else {
+            tableHtml += `<td></td>`;
           }
-          currentCol++;
         }
         
-        worksheet.getCell(row, currentCol).value = c.isSubmitting ? '是' : '否';
-        currentCol++;
-        worksheet.getCell(row, currentCol).value = c.submittingOrg || '';
-        currentCol++;
-        worksheet.getCell(row, currentCol).value = c.submittingMethod || '';
-        currentCol++;
+        tableHtml += `<td>${c.isSubmitting ? '是' : '否'}</td>`;
+        tableHtml += `<td>${c.submittingOrg || ''}</td>`;
+        tableHtml += `<td>${c.submittingMethod || ''}</td>`;
         
         const submittingVouchers = c.submittingVouchers || [];
         for (const voucherName of submittingVouchers) {
-          const imgData = await readImageAsBase64(voucherName);
-          if (imgData) {
-            try {
-              const imageId = `subv_${row}_${currentCol}_${Date.now()}`;
-              const image = workbook.addImage({
-                base64: imgData.base64,
-                extension: imgData.type.split('/')[1] || 'webp',
-                id: imageId
-              });
-              worksheet.addImage(image, {
-                tl: { col: currentCol - 1, row: row - 1 },
-                ext: { width: 80, height: 100 }
-              });
-            } catch (e) {
-              console.error('添加送评凭证失败:', voucherName, e);
-            }
+          const dataUrl = await readImageAsDataUrl(voucherName);
+          if (dataUrl) {
+            tableHtml += `<td><img src="${dataUrl}" alt="送评凭证"></td>`;
+          } else {
+            tableHtml += `<td></td>`;
           }
-          currentCol++;
         }
         
-        worksheet.getRow(row).height = 120;
-        row++;
+        tableHtml += '</tr>';
       }
       
-      const headerRow = worksheet.getRow(1);
-      headerRow.height = 25;
-      headerRow.eachCell(cell => {
-        cell.font = { bold: true };
-        cell.alignment = { vertical: 'middle', horizontal: 'center' };
-      });
+      tableHtml += '</tbody></table>';
+      return tableHtml;
     };
     
-    await addCardsToSheet('卡牌收藏', activeCards);
+    htmlContent += await generateTable('卡牌收藏', activeCards);
     
     if (deletedCards.length > 0) {
-      await addCardsToSheet('已删除卡牌', deletedCards);
+      htmlContent += await generateTable('已删除卡牌', deletedCards);
     }
     
-    const buffer = await workbook.xlsx.writeBuffer();
-    const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' });
+    htmlContent += `
+</body>
+</html>
+`;
+    
+    const blob = new Blob([htmlContent], { type: 'application/vnd.ms-excel' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
     a.href = url;
-    a.download = 'TCG_Collection.xlsx';
+    a.download = 'TCG_Collection.xls';
     a.click();
     URL.revokeObjectURL(url);
     

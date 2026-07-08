@@ -461,6 +461,9 @@
               <button id="historyBtn" onclick="showHistory()" data-tooltip="查看所有操作历史记录，包括添加、编辑、删除等操作的详细日志。" class="bg-amber-50 dark:bg-amber-900/30 hover:bg-amber-100 dark:hover:bg-amber-900/50 text-amber-600 dark:text-amber-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
                 <i class="fa fa-history text-xs"></i> 历史
               </button>
+              <button id="shareBtn" onclick="showShareCard()" data-tooltip="生成收益分享卡片，向朋友展示你的卡牌投资收益情况。" class="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-share-alt text-xs"></i> 晒收益
+              </button>
             </div>
           </div>
           
@@ -2962,6 +2965,199 @@ function showStats() {
   `;
   
   showModal(content, '收藏统计');
+}
+
+function showShareCard() {
+  const activeCards = cards.filter(c => !c.markedForDelete);
+  
+  let totalPurchase = 0;
+  let totalMarket = 0;
+  let totalSale = 0;
+  let cardCount = 0;
+  
+  activeCards.forEach(card => {
+    const qty = parseInt(card.qty) || 0;
+    const purchaseQty = parseInt(card.purchaseQty) || 0;
+    const saleQty = parseInt(card.saleQty) || 0;
+    
+    cardCount += qty;
+    
+    const purchasePrice = parseFloat(card.purchasePrice) || 0;
+    const purchaseCurrency = card.purchaseCurrency || 'CNY';
+    const marketPrice = parseFloat(card.marketPrice) || 0;
+    const marketCurrency = card.marketCurrency || 'CNY';
+    const salePrice = parseFloat(card.salePrice) || 0;
+    const saleCurrency = card.saleCurrency || 'CNY';
+    
+    const purchaseInCNY = (purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency]) * purchaseQty;
+    const marketInCNY = (marketCurrency === 'CNY' ? marketPrice : marketPrice / rate[marketCurrency]) * qty;
+    const saleInCNY = (saleCurrency === 'CNY' ? salePrice : salePrice / rate[saleCurrency]) * saleQty;
+    
+    totalPurchase += purchaseInCNY;
+    totalMarket += marketInCNY;
+    totalSale += saleInCNY;
+  });
+  
+  const profit = totalMarket - totalPurchase;
+  const profitRate = totalPurchase > 0 ? (profit / totalPurchase * 100) : 0;
+  
+  const profitColor = profit >= 0 ? 'text-green-500' : 'text-red-500';
+  const profitBg = profit >= 0 ? 'bg-green-50' : 'bg-red-50';
+  const profitIcon = profit >= 0 ? 'fa-arrow-up' : 'fa-arrow-down';
+  
+  const content = `
+    <div class="space-y-4">
+      <div class="bg-gradient-to-br from-purple-600 to-blue-600 rounded-2xl p-6 text-white shadow-xl">
+        <div class="flex items-center justify-between mb-4">
+          <div>
+            <h3 class="text-lg font-bold flex items-center gap-2">
+              <i class="fa fa-trophy"></i> 我的卡牌投资收益
+            </h3>
+            <p class="text-purple-200 text-sm mt-1">TCG卡牌管理工具</p>
+          </div>
+          <div class="text-right">
+            <p class="text-xs text-purple-200">统计时间</p>
+            <p class="text-sm font-medium">${new Date().toLocaleDateString()}</p>
+          </div>
+        </div>
+        
+        <div class="grid grid-cols-2 gap-4">
+          <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm">
+            <p class="text-purple-200 text-xs mb-1">收藏卡牌</p>
+            <p class="text-3xl font-bold">${cardCount}</p>
+            <p class="text-purple-200 text-xs">张</p>
+          </div>
+          <div class="bg-white/10 rounded-xl p-4 backdrop-blur-sm">
+            <p class="text-purple-200 text-xs mb-1">卡牌种类</p>
+            <p class="text-3xl font-bold">${activeCards.length}</p>
+            <p class="text-purple-200 text-xs">种</p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="grid grid-cols-2 gap-4">
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-blue-100 dark:bg-blue-900/30 flex items-center justify-center">
+              <i class="fa fa-shopping-cart text-blue-600"></i>
+            </div>
+            <span class="text-sm text-gray-500">购入总价</span>
+          </div>
+          <p class="text-xl font-bold text-gray-800 dark:text-gray-100">¥${totalPurchase.toFixed(2)}</p>
+        </div>
+        
+        <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+          <div class="flex items-center gap-2 mb-2">
+            <div class="w-8 h-8 rounded-lg bg-emerald-100 dark:bg-emerald-900/30 flex items-center justify-center">
+              <i class="fa fa-line-chart text-emerald-600"></i>
+            </div>
+            <span class="text-sm text-gray-500">市场估值</span>
+          </div>
+          <p class="text-xl font-bold text-gray-800 dark:text-gray-100">¥${totalMarket.toFixed(2)}</p>
+        </div>
+      </div>
+      
+      <div class="${profitBg} dark:bg-gray-700 rounded-xl p-4 border border-gray-100 dark:border-gray-600">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <div class="w-12 h-12 rounded-xl bg-white shadow-md flex items-center justify-center">
+              <i class="fa ${profitIcon} ${profitColor} text-xl"></i>
+            </div>
+            <div>
+              <p class="text-sm text-gray-500">投资收益</p>
+              <p class="text-3xl font-bold ${profitColor}">
+                ${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)}
+              </p>
+            </div>
+          </div>
+          <div class="text-right">
+            <p class="text-sm text-gray-500">收益率</p>
+            <p class="text-2xl font-bold ${profitColor}">
+              ${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%
+            </p>
+          </div>
+        </div>
+      </div>
+      
+      <div class="bg-gray-50 dark:bg-gray-700 rounded-xl p-4">
+        <div class="flex items-center gap-2 mb-3">
+          <div class="w-8 h-8 rounded-lg bg-amber-100 dark:bg-amber-900/30 flex items-center justify-center">
+            <i class="fa fa-history text-amber-600"></i>
+          </div>
+          <span class="text-sm text-gray-500">出售收益</span>
+        </div>
+        <p class="text-xl font-bold text-gray-800 dark:text-gray-100">¥${totalSale.toFixed(2)}</p>
+        <p class="text-xs text-gray-400 mt-1">已出售卡牌获得的实际收益</p>
+      </div>
+      
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-600 space-y-2">
+        <button onclick="copyShareText()" class="w-full bg-gradient-to-r from-purple-600 to-blue-600 hover:opacity-90 text-white py-3 rounded-xl transition-colors flex items-center justify-center gap-2 font-medium">
+          <i class="fa fa-copy"></i> 复制分享文案
+        </button>
+        <button onclick="copyShareLink()" class="w-full bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-700 dark:text-gray-200 py-2 rounded-xl transition-colors flex items-center justify-center gap-2 text-sm">
+          <i class="fa fa-link"></i> 复制分享链接
+        </button>
+        <button onclick="closeModal()" class="w-full bg-gray-100 dark:bg-gray-600 hover:bg-gray-200 dark:hover:bg-gray-500 text-gray-500 py-2 rounded-xl transition-colors text-sm">
+          关闭
+        </button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '晒收益', 'max-w-md');
+}
+
+function copyShareText() {
+  const activeCards = cards.filter(c => !c.markedForDelete);
+  
+  let totalPurchase = 0;
+  let totalMarket = 0;
+  let cardCount = 0;
+  
+  activeCards.forEach(card => {
+    const qty = parseInt(card.qty) || 0;
+    const purchaseQty = parseInt(card.purchaseQty) || 0;
+    
+    cardCount += qty;
+    
+    const purchasePrice = parseFloat(card.purchasePrice) || 0;
+    const purchaseCurrency = card.purchaseCurrency || 'CNY';
+    const marketPrice = parseFloat(card.marketPrice) || 0;
+    const marketCurrency = card.marketCurrency || 'CNY';
+    
+    const purchaseInCNY = (purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency]) * purchaseQty;
+    const marketInCNY = (marketCurrency === 'CNY' ? marketPrice : marketPrice / rate[marketCurrency]) * qty;
+    
+    totalPurchase += purchaseInCNY;
+    totalMarket += marketInCNY;
+  });
+  
+  const profit = totalMarket - totalPurchase;
+  const profitRate = totalPurchase > 0 ? (profit / totalPurchase * 100) : 0;
+  
+  const shareText = `🎴 我的TCG卡牌收藏收益
+📊 收藏卡牌：${cardCount}张 / ${activeCards.length}种
+💰 购入总价：¥${totalPurchase.toFixed(2)}
+📈 市场估值：¥${totalMarket.toFixed(2)}
+${profit >= 0 ? '✅' : '❌'} 投资收益：${profit >= 0 ? '+' : ''}¥${profit.toFixed(2)} (${profitRate >= 0 ? '+' : ''}${profitRate.toFixed(2)}%)
+
+快来查看我的卡牌收藏！
+https://goldxrhino.github.io/tcg-cards-manager/`;
+  
+  navigator.clipboard.writeText(shareText).then(() => {
+    showToast('成功', '分享文案已复制');
+  }).catch(() => {
+    showToast('错误', '复制失败', 'error');
+  });
+}
+
+function copyShareLink() {
+  const link = 'https://goldxrhino.github.io/tcg-cards-manager/';
+  navigator.clipboard.writeText(link).then(() => {
+    showToast('成功', '分享链接已复制');
+  }).catch(() => {
+    showToast('错误', '复制失败', 'error');
+  });
 }
 
 // === 背景颜色选择器 ===

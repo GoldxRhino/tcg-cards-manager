@@ -5305,7 +5305,7 @@ function render(data = null) {
       <td class="px-2 py-1.5">
         <div class="flex items-center gap-2">
           ${card.images && card.images.length > 0 ? `<div class="image-placeholder w-7 h-9 rounded border border-gray-200 dark:border-gray-600 overflow-hidden" data-original-index="${originalIndex}">${imagePlaceholder}</div>` : (card.image ? `<div class="image-placeholder w-7 h-9 rounded border border-gray-200 dark:border-gray-600 overflow-hidden" data-original-index="${originalIndex}">${imagePlaceholder}</div>` : imagePlaceholder)}
-          <span class="font-medium text-xs truncate max-w-[100px]" title="${card.name || '-'}">${card.name || '-'}</span>
+          <span class="font-medium text-xs truncate max-w-[200px] card-name-tooltip" data-tooltip="${card.name || '-'}">${card.name || '-'}</span>
         </div>
       </td>
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.series || '-'}</td>
@@ -6282,11 +6282,13 @@ if (savedBackground) {
     currentTarget = target;
     const content = target.getAttribute('data-tooltip');
     
+    const delay = target.classList.contains('card-name-tooltip') ? 500 : 3000;
+    
     tooltipTimer = setTimeout(() => {
       if (currentTarget === target) {
         showTooltip(target, content);
       }
-    }, 3000); // 3秒后显示
+    }, delay);
   });
 
   document.addEventListener('mouseout', function(e) {

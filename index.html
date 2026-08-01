@@ -1985,92 +1985,106 @@ function openAddCardModal(prefillData) {
       </div>
       
       <!-- 价格信息（左：购入价格，右：出售价格） -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-4">
         <!-- 左列：购入价格 -->
-        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">购入价格</div>
-          <!-- 购入数量 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">购入数量</label>
-            <input type="number" id="cardPurchaseQty" value="${data.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="onPurchaseQtyChange()">
-          </div>
-          <!-- 单价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${data.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onPurchasePriceInput()">
-              <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${data.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${data.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${data.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${data.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${data.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${data.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${data.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+        <div class="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/10 border-2 border-blue-200 dark:border-blue-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200 dark:border-blue-700">
+            <div class="w-7 h-7 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-shopping-cart"></i>
             </div>
+            <div class="text-sm font-bold text-blue-700 dark:text-blue-300">购入价格</div>
           </div>
-          <!-- 总价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardPurchaseTotal" value="${data.purchaseTotal || ((data.purchasePrice || 0) * (data.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onPurchaseTotalInput()">
-          </div>
-          <!-- 市场价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">市场价 <span class="text-gray-400">(参考)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardMarketPrice" value="${data.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00">
-              <select id="cardMarketCurrency" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${data.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${data.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${data.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${data.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${data.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${data.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${data.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 购入数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">购入数量</label>
+              <input type="number" id="cardPurchaseQty" value="${data.purchaseQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" oninput="onPurchaseQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-blue-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${data.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchasePriceInput()">
+                <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${data.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${data.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${data.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${data.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${data.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${data.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${data.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-blue-400">(整笔)</span></label>
+              <input type="number" id="cardPurchaseTotal" value="${data.purchaseTotal || ((data.purchasePrice || 0) * (data.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchaseTotalInput()">
+            </div>
+            <!-- 市场价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">市场价 <span class="text-gray-400">(参考)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardMarketPrice" value="${data.marketPrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                <select id="cardMarketCurrency" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${data.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${data.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${data.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${data.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${data.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${data.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${data.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
             </div>
           </div>
           <!-- 查价按钮 -->
-          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+          <button type="button" onclick="openPriceChecker()" class="mt-3 w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium shadow-sm">
             <i class="fa fa-search"></i> 查价
           </button>
         </div>
         
         <!-- 右列：出售价格 -->
-        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">出售价格</div>
-          <!-- 出售数量 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">出售数量</label>
-            <input type="number" id="cardSaleQty" value="${data.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="onSaleQtyChange()">
-          </div>
-          <!-- 单价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${data.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onSalePriceInput()">
-              <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${data.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${data.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${data.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${data.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${data.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${data.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${data.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+        <div class="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-900/10 border-2 border-green-200 dark:border-green-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-700">
+            <div class="w-7 h-7 bg-green-500 dark:bg-green-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-tag"></i>
             </div>
+            <div class="text-sm font-bold text-green-700 dark:text-green-300">出售价格</div>
           </div>
-          <!-- 总价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardSaleTotal" value="${data.saleTotal || ((data.salePrice || 0) * (data.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onSaleTotalInput()">
-          </div>
-          <!-- 利润 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">利润 <span class="text-gray-400">(自动)</span></label>
-            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
-              自动计算
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 出售数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">出售数量</label>
+              <input type="number" id="cardSaleQty" value="${data.saleQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0" oninput="onSaleQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-green-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${data.salePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSalePriceInput()">
+                <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer">
+                  <option value="CNY" ${data.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${data.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${data.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${data.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${data.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${data.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${data.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-green-400">(整笔)</span></label>
+              <input type="number" id="cardSaleTotal" value="${data.saleTotal || ((data.salePrice || 0) * (data.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSaleTotalInput()">
+            </div>
+            <!-- 利润 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">利润 <span class="text-gray-400">(自动)</span></label>
+              <div id="profitPreview" class="w-full px-2.5 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 border border-green-300 dark:border-green-700 rounded-lg text-sm text-green-700 dark:text-green-300 font-medium text-center">
+                自动计算
+              </div>
             </div>
           </div>
         </div>
@@ -4430,83 +4444,106 @@ function restoreAddForm(cardData) {
       </div>
       
       <!-- 价格信息 -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-4">
         <!-- 左列：购入价格 -->
-        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">购入价格</div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">购入数量</label>
-            <input type="number" id="cardPurchaseQty" value="${cardData.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="onPurchaseQtyChange()">
+        <div class="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/10 border-2 border-blue-200 dark:border-blue-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200 dark:border-blue-700">
+            <div class="w-7 h-7 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-shopping-cart"></i>
+            </div>
+            <div class="text-sm font-bold text-blue-700 dark:text-blue-300">购入价格</div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${cardData.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onPurchasePriceInput()">
-              <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${cardData.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${cardData.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${cardData.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${cardData.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${cardData.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${cardData.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${cardData.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 购入数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">购入数量</label>
+              <input type="number" id="cardPurchaseQty" value="${cardData.purchaseQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" oninput="onPurchaseQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-blue-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${cardData.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchasePriceInput()">
+                <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${cardData.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${cardData.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${cardData.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${cardData.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${cardData.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${cardData.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${cardData.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-blue-400">(整笔)</span></label>
+              <input type="number" id="cardPurchaseTotal" value="${cardData.purchaseTotal || ((cardData.purchasePrice || 0) * (cardData.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchaseTotalInput()">
+            </div>
+            <!-- 市场价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">市场价 <span class="text-gray-400">(参考)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardMarketPrice" value="${cardData.marketPrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                <select id="cardMarketCurrency" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${cardData.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${cardData.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${cardData.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${cardData.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${cardData.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${cardData.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${cardData.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
             </div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardPurchaseTotal" value="${cardData.purchaseTotal || ((cardData.purchasePrice || 0) * (cardData.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onPurchaseTotalInput()">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">市场价 <span class="text-gray-400">(参考)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardMarketPrice" value="${cardData.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00">
-              <select id="cardMarketCurrency" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${cardData.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${cardData.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${cardData.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${cardData.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${cardData.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${cardData.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${cardData.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
-            </div>
-          </div>
-          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+          <!-- 查价按钮 -->
+          <button type="button" onclick="openPriceChecker()" class="mt-3 w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium shadow-sm">
             <i class="fa fa-search"></i> 查价
           </button>
         </div>
         
         <!-- 右列：出售价格 -->
-        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">出售价格</div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">出售数量</label>
-            <input type="number" id="cardSaleQty" value="${cardData.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="onSaleQtyChange()">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${cardData.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onSalePriceInput()">
-              <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${cardData.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${cardData.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${cardData.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${cardData.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${cardData.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${cardData.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${cardData.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+        <div class="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-900/10 border-2 border-green-200 dark:border-green-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-700">
+            <div class="w-7 h-7 bg-green-500 dark:bg-green-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-tag"></i>
             </div>
+            <div class="text-sm font-bold text-green-700 dark:text-green-300">出售价格</div>
           </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardSaleTotal" value="${cardData.saleTotal || ((cardData.salePrice || 0) * (cardData.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="onSaleTotalInput()">
-          </div>
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">利润 <span class="text-gray-400">(自动)</span></label>
-            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
-              自动计算
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 出售数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">出售数量</label>
+              <input type="number" id="cardSaleQty" value="${cardData.saleQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0" oninput="onSaleQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-green-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${cardData.salePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSalePriceInput()">
+                <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer">
+                  <option value="CNY" ${cardData.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${cardData.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${cardData.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${cardData.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${cardData.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${cardData.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${cardData.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-green-400">(整笔)</span></label>
+              <input type="number" id="cardSaleTotal" value="${cardData.saleTotal || ((cardData.salePrice || 0) * (cardData.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSaleTotalInput()">
+            </div>
+            <!-- 利润 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">利润 <span class="text-gray-400">(自动)</span></label>
+              <div id="profitPreview" class="w-full px-2.5 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 border border-green-300 dark:border-green-700 rounded-lg text-sm text-green-700 dark:text-green-300 font-medium text-center">
+                自动计算
+              </div>
             </div>
           </div>
         </div>
@@ -6455,92 +6492,106 @@ function editCard(index, savedData) {
       </div>
       
       <!-- 价格信息（左：购入价格，右：出售价格） -->
-      <div class="grid grid-cols-2 gap-3">
+      <div class="grid grid-cols-2 gap-4">
         <!-- 左列：购入价格 -->
-        <div class="space-y-3 p-3 bg-blue-50 dark:bg-blue-900/20 border border-blue-200 dark:border-blue-800 rounded-lg">
-          <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider">购入价格</div>
-          <!-- 购入数量 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">购入数量</label>
-            <input type="number" id="cardPurchaseQty" value="${card.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0" oninput="onPurchaseQtyChange()">
-          </div>
-          <!-- 单价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${card.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="onPurchasePriceInput()">
-              <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-                <option value="CNY" ${card.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${card.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${card.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${card.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${card.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${card.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${card.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+        <div class="p-4 bg-gradient-to-br from-blue-50 to-blue-100 dark:from-blue-900/30 dark:to-blue-900/10 border-2 border-blue-200 dark:border-blue-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-blue-200 dark:border-blue-700">
+            <div class="w-7 h-7 bg-blue-500 dark:bg-blue-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-shopping-cart"></i>
             </div>
+            <div class="text-sm font-bold text-blue-700 dark:text-blue-300">购入价格</div>
           </div>
-          <!-- 总价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardPurchaseTotal" value="${card.purchaseTotal || ((card.purchasePrice || 0) * (card.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="onPurchaseTotalInput()">
-          </div>
-          <!-- 市场价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">市场价 <span class="text-gray-400">(参考)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardMarketPrice" value="${card.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00">
-              <select id="cardMarketCurrency" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-                <option value="CNY" ${card.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${card.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${card.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${card.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${card.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${card.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${card.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 购入数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">购入数量</label>
+              <input type="number" id="cardPurchaseQty" value="${card.purchaseQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0" oninput="onPurchaseQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-blue-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${card.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchasePriceInput()">
+                <select id="cardPurchaseCurrency" onchange="onPurchasePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${card.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${card.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${card.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${card.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${card.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${card.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${card.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-blue-400">(整笔)</span></label>
+              <input type="number" id="cardPurchaseTotal" value="${card.purchaseTotal || ((card.purchasePrice || 0) * (card.purchaseQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00" oninput="onPurchaseTotalInput()">
+            </div>
+            <!-- 市场价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">市场价 <span class="text-gray-400">(参考)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardMarketPrice" value="${card.marketPrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500" placeholder="0.00">
+                <select id="cardMarketCurrency" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-blue-500 focus:border-blue-500 cursor-pointer">
+                  <option value="CNY" ${card.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${card.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${card.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${card.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${card.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${card.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${card.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
             </div>
           </div>
           <!-- 查价按钮 -->
-          <button type="button" onclick="openPriceChecker()" class="w-full px-3 py-2 bg-blue-500 hover:bg-blue-600 text-white rounded-lg transition-colors flex items-center justify-center gap-2 text-sm">
+          <button type="button" onclick="openPriceChecker()" class="mt-3 w-full px-3 py-2 bg-gradient-to-r from-blue-500 to-blue-600 hover:from-blue-600 hover:to-blue-700 text-white rounded-lg transition-all flex items-center justify-center gap-2 text-sm font-medium shadow-sm">
             <i class="fa fa-search"></i> 查价
           </button>
         </div>
         
         <!-- 右列：出售价格 -->
-        <div class="space-y-3 p-3 bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 rounded-lg">
-          <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider">出售价格</div>
-          <!-- 出售数量 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">出售数量</label>
-            <input type="number" id="cardSaleQty" value="${card.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0" oninput="onSaleQtyChange()">
-          </div>
-          <!-- 单价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">单价 <span class="text-gray-400">(填写后自动计算总价)</span></label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${card.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="onSalePriceInput()">
-              <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-                <option value="CNY" ${card.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${card.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${card.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${card.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${card.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${card.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${card.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+        <div class="p-4 bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-900/10 border-2 border-green-200 dark:border-green-700 rounded-xl shadow-sm">
+          <div class="flex items-center gap-2 mb-3 pb-2 border-b border-green-200 dark:border-green-700">
+            <div class="w-7 h-7 bg-green-500 dark:bg-green-600 rounded-lg flex items-center justify-center text-white text-xs">
+              <i class="fa fa-tag"></i>
             </div>
+            <div class="text-sm font-bold text-green-700 dark:text-green-300">出售价格</div>
           </div>
-          <!-- 总价 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">总价 <span class="text-gray-400">(可直接填写整笔总价)</span></label>
-            <input type="number" id="cardSaleTotal" value="${card.saleTotal || ((card.salePrice || 0) * (card.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="onSaleTotalInput()">
-          </div>
-          <!-- 利润 -->
-          <div>
-            <label class="block text-xs text-gray-500 dark:text-gray-400 mb-0.5">利润 <span class="text-gray-400">(自动)</span></label>
-            <div id="profitPreview" class="w-full px-3 py-2 bg-gray-100 dark:bg-gray-700 rounded-lg text-sm text-gray-600 dark:text-gray-400">
-              自动计算
+          <div class="grid grid-cols-2 gap-x-3 gap-y-3">
+            <!-- 出售数量 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">出售数量</label>
+              <input type="number" id="cardSaleQty" value="${card.saleQty || 0}" min="0" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0" oninput="onSaleQtyChange()">
+            </div>
+            <!-- 单价 + 货币 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">单价 <span class="text-green-400">(填)</span></label>
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${card.salePrice || 0}" min="0" step="0.01" class="flex-1 border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSalePriceInput()">
+                <select id="cardSaleCurrency" onchange="onSalePriceInput()" class="w-14 border border-gray-300 dark:border-gray-600 rounded-lg px-1 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500 cursor-pointer">
+                  <option value="CNY" ${card.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${card.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${card.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${card.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${card.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${card.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${card.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+            </div>
+            <!-- 总价 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">总价 <span class="text-green-400">(整笔)</span></label>
+              <input type="number" id="cardSaleTotal" value="${card.saleTotal || ((card.salePrice || 0) * (card.saleQty || 0)).toFixed(2)}" min="0" step="0.01" class="w-full border border-gray-300 dark:border-gray-600 rounded-lg px-2.5 py-1.5 dark:bg-gray-700 text-sm focus:ring-2 focus:ring-green-500 focus:border-green-500" placeholder="0.00" oninput="onSaleTotalInput()">
+            </div>
+            <!-- 利润 -->
+            <div>
+              <label class="block text-[11px] font-medium text-gray-500 dark:text-gray-400 mb-1">利润 <span class="text-gray-400">(自动)</span></label>
+              <div id="profitPreview" class="w-full px-2.5 py-1.5 bg-gradient-to-r from-green-100 to-emerald-100 dark:from-green-900/40 dark:to-emerald-900/40 border border-green-300 dark:border-green-700 rounded-lg text-sm text-green-700 dark:text-green-300 font-medium text-center">
+                自动计算
+              </div>
             </div>
           </div>
         </div>

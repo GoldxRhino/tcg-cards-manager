@@ -607,9 +607,9 @@
     </div>
   </div>
 
-  <!-- 文件输入 -->
-  <input type="file" id="fileInput" class="hidden">
-  <input type="file" id="backupInput" class="hidden">
+  <!-- 隐藏的文件输入框 -->
+  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleExcelFile(event)" class="hidden">
+  <input type="file" id="backupInput" accept=".json" onchange="handleBackupFile(event)" class="hidden">
 
   <!-- Toast 通知 -->
   <div id="toast" class="toast">
@@ -628,10 +628,6 @@
       </div>
     </div>
   </div>
-
-  <!-- 隐藏的文件输入框 -->
-  <input type="file" id="fileInput" accept=".xlsx,.xls" onchange="handleExcelFile(event)" class="hidden">
-  <input type="file" id="backupInput" accept=".json" onchange="handleBackupFile(event)" class="hidden">
 
 <script>
 // === 全局变量 ===
@@ -2297,6 +2293,8 @@ function openAddCardModal(prefillData) {
     cardImagesList = [];
     purchaseVouchersList = [];
     saleVouchersList = [];
+    submittingVouchersList = [];
+    cardGroupsList = [];
     showToast('成功', '卡牌已添加');
   };
 }
@@ -4119,7 +4117,7 @@ function openPriceChecker() {
     purchaseVouchers: [...purVList],
     saleVouchers: [...saleVList],
     submittingVouchers: [...subVList],
-    groups: [...(cardGroupsList || [])]
+    groups: [...(isEditMode ? (editCardGroupsList || []) : (cardGroupsList || []))]
   };
   
   const content = `
@@ -4953,6 +4951,13 @@ function handleSubmittingToggle(checkbox) {
 let submittingVouchersList = [];
 let editSubmittingVouchersList = [];
 
+// === 分组列表变量 ===
+let cardGroupsList = [];
+let editCardGroupsList = [];
+
+// === 分组预览渲染（预留接口）===
+function renderGroupsPreview() {}
+
 // === 处理送评凭证上传（新增页面）===
 async function handleSubmittingVoucherUpload(input) {
   const files = Array.from(input.files);
@@ -5284,34 +5289,17 @@ async function exportToExcel() {
       
       const cardUrl = `https://goldxrhino.github.io/tcg-cards-manager/#card-${c.id}`;
       
-      if (imageCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
-      
-      if (pvCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
-      
-      if (svCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
+      // 导出图片文件名（逗号分隔），用于导入后从本地文件夹同步
+      rowData.push(c.images && c.images.length > 0 ? c.images.join(', ') : (c.image || ''));
+      rowData.push(c.purchaseVouchers && c.purchaseVouchers.length > 0 ? c.purchaseVouchers.join(', ') : '');
+      rowData.push(c.saleVouchers && c.saleVouchers.length > 0 ? c.saleVouchers.join(', ') : '');
       
       rowData.push(c.isSubmitting ? '是' : '否');
       rowData.push(c.submittingOrg || '');
       rowData.push(c.submittingMethod || '');
       rowData.push(c.submittingBatch || '');
       
-      if (subvCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
+      rowData.push(c.submittingVouchers && c.submittingVouchers.length > 0 ? c.submittingVouchers.join(', ') : '');
       
       activeData.push(rowData);
     });
@@ -5352,34 +5340,17 @@ async function exportToExcel() {
       
       const cardUrl = `https://goldxrhino.github.io/tcg-cards-manager/#card-${c.id}`;
       
-      if (imageCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
-      
-      if (pvCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
-      
-      if (svCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
+      // 导出图片文件名（逗号分隔），用于导入后从本地文件夹同步
+      rowData.push(c.images && c.images.length > 0 ? c.images.join(', ') : (c.image || ''));
+      rowData.push(c.purchaseVouchers && c.purchaseVouchers.length > 0 ? c.purchaseVouchers.join(', ') : '');
+      rowData.push(c.saleVouchers && c.saleVouchers.length > 0 ? c.saleVouchers.join(', ') : '');
       
       rowData.push(c.isSubmitting ? '是' : '否');
       rowData.push(c.submittingOrg || '');
       rowData.push(c.submittingMethod || '');
       rowData.push(c.submittingBatch || '');
       
-      if (subvCount > 0) {
-        rowData.push(cardUrl);
-      } else {
-        rowData.push('');
-      }
+      rowData.push(c.submittingVouchers && c.submittingVouchers.length > 0 ? c.submittingVouchers.join(', ') : '');
       
       deletedData.push(rowData);
     });
@@ -5417,50 +5388,142 @@ function handleExcelFile(e) {
     try {
       const b = new Uint8Array(ev.target.result);
       const wb = XLSX.read(b, { type: 'array' });
-      const arr = XLSX.utils.sheet_to_json(wb.Sheets.TCG);
       
-      if (arr.length === 0) {
-        showToast('错误', '文件中没有找到数据', 'error');
+      const sheetNames = Object.keys(wb.Sheets);
+      if (sheetNames.length === 0) {
+        showToast('错误', '文件中没有找到任何工作表', 'error');
         return;
       }
       
-      const importedCards = arr.map(x => ({
-        name: x['名称'] || '',
-        no: x['编号'] || '',
-        cardType: x['类型'] || '裸卡',
-        gradingOrg: x['评级机构'] || '',
-        language: x['语言'] || '中文',
-        source: x['来源'] || '',
-        sourceLink: x['来源链接'] || '',
-        purchaseTrackingNo: x['购入物流'] || '',
-        saleTrackingNo: x['出售物流'] || '',
-        markedForDelete: x['标记删除'] === '是' || false,
-        qty: parseInt(x['数量']) || 1,
-        purchaseQty: parseInt(x['购入数量']) || 0,
-        saleQty: parseInt(x['出售数量']) || 0,
-        purchasePrice: parseFloat(x['购入价']) || 0,
-        purchaseCurrency: x['购入币种'] || 'CNY',
-        marketPrice: parseFloat(x['市场价']) || 0,
-        marketCurrency: x['市场币种'] || 'CNY',
-        salePrice: parseFloat(x['出售价']) || 0,
-        saleCurrency: x['出售币种'] || 'CNY',
-        isInStock: x['是否入库'] === '是' || false,
-        images: [],
-        purchaseVouchers: [],
-        saleVouchers: []
-      })).filter(c => c.name);
+      const targetSheetName = sheetNames.find(n => 
+        n === '卡牌收藏' || n === 'TCG' || n === '卡牌' || sheetNames.indexOf(n) === 0
+      ) || sheetNames[0];
+      
+      const arr = XLSX.utils.sheet_to_json(wb.Sheets[targetSheetName]);
+      
+      if (arr.length === 0) {
+        showToast('错误', `工作表「${targetSheetName}」中没有找到数据`, 'error');
+        return;
+      }
+      
+      const importedCards = arr.map(x => {
+        const parseImageList = (val) => {
+          if (!val) return [];
+          const str = String(val).trim();
+          if (!str) return [];
+          // 过滤掉URL（兼容旧版导出格式），只保留文件名
+          return str.split(',').map(s => s.trim()).filter(s => s && !s.startsWith('http'));
+        };
+        
+        const card = {
+          name: x['名称'] || '',
+          category: x['分类'] || '其他',
+          series: x['系列'] || '',
+          no: x['编号'] || '',
+          cardType: x['类型'] || '裸卡',
+          gradingOrg: x['评级机构'] || '',
+          groups: x['分组'] ? String(x['分组']).split(',').map(s => s.trim()).filter(Boolean) : [],
+          language: x['语言'] || '中文',
+          source: x['来源'] || '',
+          sourceLink: x['来源链接'] || '',
+          saleSource: x['出售来源'] || '',
+          saleLink: x['出售链接'] || '',
+          purchaseTrackingNo: x['购入物流'] || '',
+          saleTrackingNo: x['出售物流'] || '',
+          qty: parseInt(x['数量']) || 1,
+          purchaseQty: parseInt(x['购入数量']) || 0,
+          saleQty: parseInt(x['出售数量']) || 0,
+          purchasePrice: parseFloat(x['购入价']) || 0,
+          purchaseCurrency: x['购入币种'] || 'CNY',
+          marketPrice: parseFloat(x['市场价']) || 0,
+          marketCurrency: x['市场币种'] || 'CNY',
+          salePrice: parseFloat(x['出售价']) || 0,
+          saleCurrency: x['出售币种'] || 'CNY',
+          isInStock: x['是否入库'] === '是' || false,
+          isSubmitting: x['是否送评'] === '是' || false,
+          submittingOrg: x['送评机构'] || '',
+          submittingMethod: x['送评途径'] || '',
+          submittingBatch: x['送评批次'] || '',
+          images: parseImageList(x['图片']),
+          purchaseVouchers: parseImageList(x['购入凭证']),
+          saleVouchers: parseImageList(x['出售凭证']),
+          submittingVouchers: parseImageList(x['送评凭证']),
+          markedForDelete: x['标记删除'] === '是' || false
+        };
+        return card;
+      }).filter(c => c.name);
       
       if (importedCards.length === 0) {
         showToast('错误', '没有找到有效的卡牌数据', 'error');
         return;
       }
       
-      cards = importedCards;
+      let mode = 'append';
+      if (cards.length > 0) {
+        mode = confirm(`当前已有 ${cards.length} 张卡牌，将从工作表「${targetSheetName}」导入 ${importedCards.length} 张。\n\n点击【确定】追加到现有数据，点击【取消】覆盖现有数据。`) ? 'append' : 'overwrite';
+      }
+      
+      if (mode === 'overwrite') {
+        const existingMap = new Map(cards.map(c => [`${c.name}|${c.series}|${c.no}`, c]));
+        const mergedCards = importedCards.map(imported => {
+          const existing = existingMap.get(`${imported.name}|${imported.series}|${imported.no}`);
+          if (existing) {
+            return {
+              ...imported,
+              id: existing.id,
+              // 优先使用导入的图片文件名（从Excel解析），为空时回退到本地已有图片
+              images: imported.images.length > 0 ? imported.images : (existing.images || (existing.image ? [existing.image] : [])),
+              purchaseVouchers: imported.purchaseVouchers.length > 0 ? imported.purchaseVouchers : (existing.purchaseVouchers || []),
+              saleVouchers: imported.saleVouchers.length > 0 ? imported.saleVouchers : (existing.saleVouchers || []),
+              submittingVouchers: imported.submittingVouchers.length > 0 ? imported.submittingVouchers : (existing.submittingVouchers || [])
+            };
+          }
+          return imported;
+        });
+        cards = mergedCards;
+        showToast('成功', `覆盖导入 ${mergedCards.length} 张卡牌`);
+      } else {
+        const existingMap = new Map(cards.map(c => [`${c.name}|${c.series}|${c.no}`, c]));
+        let addedCount = 0;
+        let skippedCount = 0;
+        
+        importedCards.forEach(imported => {
+          const key = `${imported.name}|${imported.series}|${imported.no}`;
+          const existing = existingMap.get(key);
+          if (existing) {
+            Object.assign(existing, {
+              ...imported,
+              id: existing.id,
+              images: imported.images.length > 0 ? imported.images : (existing.images || (existing.image ? [existing.image] : [])),
+              purchaseVouchers: imported.purchaseVouchers.length > 0 ? imported.purchaseVouchers : (existing.purchaseVouchers || []),
+              saleVouchers: imported.saleVouchers.length > 0 ? imported.saleVouchers : (existing.saleVouchers || []),
+              submittingVouchers: imported.submittingVouchers.length > 0 ? imported.submittingVouchers : (existing.submittingVouchers || [])
+            });
+            skippedCount++;
+          } else {
+            cards.push(imported);
+            addedCount++;
+          }
+        });
+        
+        showToast('成功', `追加 ${addedCount} 张（跳过 ${skippedCount} 张已存在）`);
+      }
+      
       save();
       render();
       updateDeletedCount();
-      showToast('成功', `成功导入 ${importedCards.length} 张卡牌`);
+      
+      // 导入后自动同步文件夹中的图片
+      const hasImages = importedCards.some(c => c.images.length > 0 || c.purchaseVouchers.length > 0 || c.saleVouchers.length > 0 || c.submittingVouchers.length > 0);
+      if (useFileSystem && imageDirectoryHandle) {
+        setTimeout(() => syncImagesFromFolder(), 500);
+      } else if (hasImages) {
+        setTimeout(() => {
+          showToast('提示', '导入的卡牌包含图片文件名，请点击「设置」→「设置存储」指定图片文件夹以同步显示图片', 'info');
+        }, 1500);
+      }
     } catch (err) {
+      console.error('导入失败:', err);
       showToast('错误', '导入失败：' + err.message, 'error');
     }
     
@@ -5472,6 +5535,76 @@ function handleExcelFile(e) {
   };
   
   r.readAsArrayBuffer(f);
+}
+
+// === 从文件夹同步图片：扫描文件夹，校验并匹配卡牌图片引用 ===
+async function syncImagesFromFolder() {
+  if (!useFileSystem || !imageDirectoryHandle) {
+    showToast('提示', '请先设置图片存储文件夹', 'info');
+    return;
+  }
+  
+  try {
+    // 扫描文件夹，获取所有文件名
+    const folderFiles = new Set();
+    for await (const entry of imageDirectoryHandle.values()) {
+      if (entry.kind === 'file') {
+        folderFiles.add(entry.name);
+      }
+    }
+    
+    if (folderFiles.size === 0) {
+      showToast('提示', '图片文件夹为空', 'info');
+      return;
+    }
+    
+    let matchedCount = 0;
+    let missingCount = 0;
+    let updated = false;
+    
+    // 遍历所有卡牌，校验图片引用
+    cards.forEach(card => {
+      const checkAndFill = (arr, fieldName) => {
+        if (!arr || arr.length === 0) return arr;
+        // 过滤掉文件夹中不存在的文件名
+        const valid = arr.filter(f => folderFiles.has(f));
+        const missing = arr.length - valid.length;
+        if (missing > 0) {
+          missingCount += missing;
+          console.warn(`[同步] 卡牌「${card.name}」${fieldName}有 ${missing} 个文件在文件夹中未找到`);
+        }
+        if (valid.length > 0) matchedCount++;
+        return valid;
+      };
+      
+      const oldImgLen = (card.images || []).length;
+      const oldPvLen = (card.purchaseVouchers || []).length;
+      const oldSvLen = (card.saleVouchers || []).length;
+      const oldSubvLen = (card.submittingVouchers || []).length;
+      
+      card.images = checkAndFill(card.images || [], '图片');
+      card.purchaseVouchers = checkAndFill(card.purchaseVouchers || [], '购入凭证');
+      card.saleVouchers = checkAndFill(card.saleVouchers || [], '出售凭证');
+      card.submittingVouchers = checkAndFill(card.submittingVouchers || [], '送评凭证');
+      
+      // 如果有变化，标记需要保存
+      if (card.images.length !== oldImgLen || card.purchaseVouchers.length !== oldPvLen ||
+          card.saleVouchers.length !== oldSvLen || card.submittingVouchers.length !== oldSubvLen) {
+        updated = true;
+      }
+    });
+    
+    if (updated) {
+      save();
+    }
+    render();
+    
+    console.log(`[同步] 文件夹共 ${folderFiles.size} 个文件，匹配 ${matchedCount} 张卡牌，缺失 ${missingCount} 个文件`);
+    showToast('同步完成', `扫描到 ${folderFiles.size} 个图片文件，已匹配卡牌图片引用`);
+  } catch (err) {
+    console.error('[同步] 扫描文件夹失败:', err);
+    showToast('错误', '同步图片失败: ' + err.message, 'error');
+  }
 }
 
 // === 工具函数 ===
@@ -5836,6 +5969,7 @@ function editCard(index, savedData) {
   editPurchaseVouchersList = card.purchaseVouchers ? [...card.purchaseVouchers] : [];
   editSaleVouchersList = card.saleVouchers ? [...card.saleVouchers] : [];
   editSubmittingVouchersList = card.submittingVouchers ? [...card.submittingVouchers] : [];
+  editCardGroupsList = card.groups ? [...card.groups] : [];
   
   const content = `
     <form id="cardForm" class="space-y-3">
@@ -6283,6 +6417,7 @@ function editCard(index, savedData) {
       editPurchaseVouchersList = [];
       editSaleVouchersList = [];
       editSubmittingVouchersList = [];
+      editCardGroupsList = [];
       showToast('成功', '卡牌已更新');
     } catch (error) {
       console.error('保存卡牌时出错:', error);

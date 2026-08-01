@@ -494,10 +494,16 @@
                 <i class="fa fa-list text-primary text-sm"></i> 卡牌收藏
                 <span class="text-xs text-gray-400 dark:text-gray-500 font-normal" id="cardListCount">(0)</span>
               </h2>
-              <button id="setStorageBtn" onclick="handleSetStorageFolder()" 
-                class="text-gray-400 hover:text-primary transition-colors text-sm" title="设置图片存储文件夹">
-                <i class="fa fa-folder-open"></i>
-              </button>
+              <div class="flex items-center gap-1">
+                <button id="syncImagesBtn" onclick="syncImagesFromFolder()" 
+                  class="text-gray-400 hover:text-green-500 transition-colors text-sm hidden" title="从文件夹同步图片">
+                  <i class="fa fa-refresh"></i>
+                </button>
+                <button id="setStorageBtn" onclick="handleSetStorageFolder()" 
+                  class="text-gray-400 hover:text-primary transition-colors text-sm" title="设置图片存储文件夹">
+                  <i class="fa fa-folder-open"></i>
+                </button>
+              </div>
             </div>
             <div class="flex gap-2">
               <select id="sortSel" onchange="sortCards()" class="border border-gray-200 dark:border-gray-600 rounded-lg px-2 py-1 text-xs bg-white dark:bg-gray-700 cursor-pointer focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all">
@@ -1147,27 +1153,36 @@ async function handleSetStorageFolder() {
   
   const success = await selectImageDirectory();
   
-  // 如果设置成功，更新按钮状态
   if (success) {
     updateStorageButton();
-    // 刷新图片显示
     render();
+    // 选择文件夹后自动同步图片
+    setTimeout(() => syncImagesFromFolder(), 300);
   }
 }
 
 // === 更新存储按钮状态 ===
 function updateStorageButton() {
   const btn = document.getElementById('setStorageBtn');
+  const syncBtn = document.getElementById('syncImagesBtn');
   if (!btn) return;
   
   if (useFileSystem) {
     btn.className = 'px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 bg-green-500 hover:bg-green-600 text-white shadow-md shadow-green-500/30';
     btn.innerHTML = '<i class="fa fa-check-circle"></i> 已设置';
     btn.setAttribute('data-tooltip', '图片文件夹已设置，点击可重新选择');
+    // 已设置文件夹时，显示同步按钮
+    if (syncBtn) {
+      syncBtn.classList.remove('hidden');
+    }
   } else {
     btn.className = 'px-2.5 py-1 rounded-lg transition-all text-xs font-medium flex items-center gap-1.5 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white shadow-md shadow-blue-500/30';
     btn.innerHTML = '<i class="fa fa-folder-open"></i> 设置存储';
     btn.setAttribute('data-tooltip', '设置本地图片存储文件夹，图片将保存在您的电脑上');
+    // 未设置文件夹时，隐藏同步按钮
+    if (syncBtn) {
+      syncBtn.classList.add('hidden');
+    }
   }
 }
 
@@ -1982,17 +1997,23 @@ function openAddCardModal(prefillData) {
           <!-- 购入价 -->
           <div>
             <label class="block text-sm font-medium mb-1">购入价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${data.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
-              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${data.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${data.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${data.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${data.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${data.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${data.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${data.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${data.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="单价" oninput="updatePricePreview('purchase')">
+                <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                  <option value="CNY" ${data.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${data.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${data.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${data.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${data.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${data.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${data.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardPurchaseTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((data.purchasePrice || 0) * (data.purchaseQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${data.purchaseCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <!-- 市场价 -->
@@ -2028,17 +2049,23 @@ function openAddCardModal(prefillData) {
           <!-- 出售价 -->
           <div>
             <label class="block text-sm font-medium mb-1">出售价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${data.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
-              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${data.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${data.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${data.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${data.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${data.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${data.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${data.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${data.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="单价" oninput="updatePricePreview('sale')">
+                <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                  <option value="CNY" ${data.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${data.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${data.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${data.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${data.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${data.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${data.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardSaleTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((data.salePrice || 0) * (data.saleQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${data.saleCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <!-- 利润 -->
@@ -3984,11 +4011,24 @@ function updateStock() {
   const salePriceInput = document.getElementById('cardSalePrice');
   const saleCurrencySelect = document.getElementById('cardSaleCurrency');
   const profitPreview = document.getElementById('profitPreview');
+  const purchaseTotalInput = document.getElementById('cardPurchaseTotal');
+  const saleTotalInput = document.getElementById('cardSaleTotal');
+  
+  const purchaseQty = parseInt(purchaseQtyInput?.value) || 0;
+  const saleQty = parseInt(saleQtyInput?.value) || 0;
+  const purchasePrice = parseFloat(purchasePriceInput?.value) || 0;
+  const salePrice = parseFloat(salePriceInput?.value) || 0;
+  
+  // 更新总价显示
+  if (purchaseTotalInput) {
+    purchaseTotalInput.value = (purchasePrice * purchaseQty).toFixed(2);
+  }
+  if (saleTotalInput) {
+    saleTotalInput.value = (salePrice * saleQty).toFixed(2);
+  }
   
   // 更新库存
   if (purchaseQtyInput && saleQtyInput && stockInput) {
-    const purchaseQty = parseInt(purchaseQtyInput.value) || 0;
-    const saleQty = parseInt(saleQtyInput.value) || 0;
     const stock = purchaseQty - saleQty;
     
     stockInput.value = stock;
@@ -4005,12 +4045,8 @@ function updateStock() {
   
   // 计算利润（基于数量）
   if (purchasePriceInput && salePriceInput && profitPreview) {
-    const purchasePrice = parseFloat(purchasePriceInput.value) || 0;
     const purchaseCurrency = purchaseCurrencySelect ? purchaseCurrencySelect.value : 'CNY';
-    const purchaseQty = parseInt(purchaseQtyInput.value) || 0;
-    const salePrice = parseFloat(salePriceInput.value) || 0;
     const saleCurrency = saleCurrencySelect ? saleCurrencySelect.value : 'CNY';
-    const saleQty = parseInt(saleQtyInput.value) || 0;
     
     // 统一转换为CNY计算（使用总价）
     const purchaseInCNY = (purchaseCurrency === 'CNY' ? purchasePrice : purchasePrice / rate[purchaseCurrency]) * purchaseQty;
@@ -4290,17 +4326,23 @@ function restoreAddForm(cardData) {
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">购入价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${cardData.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
-              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${cardData.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${cardData.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${cardData.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${cardData.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${cardData.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${cardData.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${cardData.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${cardData.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="单价" oninput="updatePricePreview('purchase')">
+                <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                  <option value="CNY" ${cardData.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${cardData.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${cardData.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${cardData.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${cardData.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${cardData.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${cardData.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardPurchaseTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((cardData.purchasePrice || 0) * (cardData.purchaseQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${cardData.purchaseCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <div>
@@ -4332,17 +4374,23 @@ function restoreAddForm(cardData) {
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">出售价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${cardData.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
-              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY" ${cardData.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${cardData.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${cardData.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${cardData.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${cardData.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${cardData.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${cardData.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${cardData.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="单价" oninput="updatePricePreview('sale')">
+                <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
+                  <option value="CNY" ${cardData.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${cardData.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${cardData.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${cardData.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${cardData.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${cardData.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${cardData.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardSaleTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((cardData.salePrice || 0) * (cardData.saleQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${cardData.saleCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <div>
@@ -5544,7 +5592,14 @@ async function syncImagesFromFolder() {
     return;
   }
   
+  const syncBtn = document.getElementById('syncImagesBtn');
+  if (syncBtn) {
+    syncBtn.classList.add('animate-spin');
+  }
+  
   try {
+    showToast('同步中', '正在扫描图片文件夹...', 'info');
+    
     // 扫描文件夹，获取所有文件名
     const folderFiles = new Set();
     for await (const entry of imageDirectoryHandle.values()) {
@@ -5554,25 +5609,47 @@ async function syncImagesFromFolder() {
     }
     
     if (folderFiles.size === 0) {
-      showToast('提示', '图片文件夹为空', 'info');
+      showToast('提示', '图片文件夹为空，请确认已选择正确的文件夹', 'info');
+      if (syncBtn) syncBtn.classList.remove('animate-spin');
       return;
     }
     
+    // 统计各类型文件
+    const fileStats = { card: 0, pv: 0, sv: 0, svb: 0, other: 0 };
+    folderFiles.forEach(f => {
+      if (f.startsWith('card_')) fileStats.card++;
+      else if (f.startsWith('pv_')) fileStats.pv++;
+      else if (f.startsWith('sv_')) fileStats.sv++;
+      else if (f.startsWith('svb_')) fileStats.svb++;
+      else fileStats.other++;
+    });
+    
     let matchedCount = 0;
     let missingCount = 0;
+    let totalRefs = 0;
     let updated = false;
+    const missingDetails = [];
+    
+    // 收集所有卡牌引用的文件名，用于检测孤立文件
+    const allReferenced = new Set();
     
     // 遍历所有卡牌，校验图片引用
     cards.forEach(card => {
       const checkAndFill = (arr, fieldName) => {
         if (!arr || arr.length === 0) return arr;
-        // 过滤掉文件夹中不存在的文件名
-        const valid = arr.filter(f => folderFiles.has(f));
-        const missing = arr.length - valid.length;
-        if (missing > 0) {
-          missingCount += missing;
-          console.warn(`[同步] 卡牌「${card.name}」${fieldName}有 ${missing} 个文件在文件夹中未找到`);
-        }
+        totalRefs += arr.length;
+        
+        // 精确匹配：文件名完全一致
+        const valid = [];
+        arr.forEach(f => {
+          if (folderFiles.has(f)) {
+            valid.push(f);
+            allReferenced.add(f);
+          } else {
+            missingCount++;
+            missingDetails.push(`「${card.name}」${fieldName}: ${f}`);
+          }
+        });
         if (valid.length > 0) matchedCount++;
         return valid;
       };
@@ -5587,10 +5664,19 @@ async function syncImagesFromFolder() {
       card.saleVouchers = checkAndFill(card.saleVouchers || [], '出售凭证');
       card.submittingVouchers = checkAndFill(card.submittingVouchers || [], '送评凭证');
       
-      // 如果有变化，标记需要保存
       if (card.images.length !== oldImgLen || card.purchaseVouchers.length !== oldPvLen ||
           card.saleVouchers.length !== oldSvLen || card.submittingVouchers.length !== oldSubvLen) {
         updated = true;
+      }
+    });
+    
+    // 检测孤立文件（文件夹中有但卡牌未引用的）
+    let orphanCount = 0;
+    const orphans = [];
+    folderFiles.forEach(f => {
+      if (!allReferenced.has(f)) {
+        orphanCount++;
+        if (orphans.length < 10) orphans.push(f);
       }
     });
     
@@ -5599,11 +5685,68 @@ async function syncImagesFromFolder() {
     }
     render();
     
-    console.log(`[同步] 文件夹共 ${folderFiles.size} 个文件，匹配 ${matchedCount} 张卡牌，缺失 ${missingCount} 个文件`);
-    showToast('同步完成', `扫描到 ${folderFiles.size} 个图片文件，已匹配卡牌图片引用`);
+    // 显示详细结果
+    const resultParts = [];
+    resultParts.push(`📁 扫描：${folderFiles.size} 个文件`);
+    resultParts.push(`✅ 匹配：${matchedCount} 张卡牌的 ${totalRefs - missingCount} 个图片`);
+    
+    if (missingCount > 0) {
+      resultParts.push(`⚠️ 缺失：${missingCount} 个引用未找到`);
+    }
+    if (orphanCount > 0) {
+      resultParts.push(`📄 孤立：${orphanCount} 个文件未被引用`);
+    }
+    
+    console.log(`[同步] 结果:`, {
+      totalFiles: folderFiles.size,
+      fileStats,
+      matchedCards: matchedCount,
+      totalRefs,
+      matchedRefs: totalRefs - missingCount,
+      missingRefs: missingCount,
+      orphanFiles: orphanCount,
+      missingDetails,
+      orphanSamples: orphans
+    });
+    
+    const msg = resultParts.join(' | ');
+    showToast('同步完成', msg, 'success');
+    
+    if (missingCount > 0 || orphanCount > 0) {
+      setTimeout(() => {
+        let detailHtml = `<div class="space-y-2 text-xs">`;
+        detailHtml += `<div class="bg-gray-50 dark:bg-gray-700 p-2 rounded">`;
+        detailHtml += `<p><strong>📁 文件夹统计：</strong>共 ${folderFiles.size} 个文件</p>`;
+        detailHtml += `<p class="text-gray-500">卡牌图片: ${fileStats.card} | 购入凭证: ${fileStats.pv} | 出售凭证: ${fileStats.sv} | 送评凭证: ${fileStats.svb} | 其他: ${fileStats.other}</p>`;
+        detailHtml += `</div>`;
+        
+        if (missingCount > 0) {
+          detailHtml += `<div class="bg-red-50 dark:bg-red-900/20 p-2 rounded mt-2">`;
+          detailHtml += `<p class="text-red-600 dark:text-red-400"><strong>⚠️ ${missingCount} 个引用在文件夹中未找到：</strong></p>`;
+          detailHtml += `<div class="max-h-32 overflow-auto mt-1 text-red-500">`;
+          missingDetails.slice(0, 15).forEach(d => { detailHtml += `<p class="truncate">• ${d}</p>`; });
+          if (missingDetails.length > 15) detailHtml += `<p class="text-gray-400">...还有 ${missingDetails.length - 15} 条</p>`;
+          detailHtml += `</div></div>`;
+        }
+        
+        if (orphanCount > 0) {
+          detailHtml += `<div class="bg-amber-50 dark:bg-amber-900/20 p-2 rounded mt-2">`;
+          detailHtml += `<p class="text-amber-600 dark:text-amber-400"><strong>📄 ${orphanCount} 个文件夹文件未被任何卡牌引用：</strong></p>`;
+          detailHtml += `<div class="max-h-32 overflow-auto mt-1 text-amber-500">`;
+          orphans.forEach(o => { detailHtml += `<p class="truncate">• ${o}</p>`; });
+          if (orphanCount > orphans.length) detailHtml += `<p class="text-gray-400">...还有 ${orphanCount - orphans.length} 个</p>`;
+          detailHtml += `</div></div>`;
+        }
+        
+        detailHtml += `</div>`;
+        showModal(detailHtml, '同步详情');
+      }, 500);
+    }
   } catch (err) {
     console.error('[同步] 扫描文件夹失败:', err);
     showToast('错误', '同步图片失败: ' + err.message, 'error');
+  } finally {
+    if (syncBtn) syncBtn.classList.remove('animate-spin');
   }
 }
 
@@ -6204,17 +6347,23 @@ function editCard(index, savedData) {
           <!-- 购入价 -->
           <div>
             <label class="block text-sm font-medium mb-1">购入价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="${card.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
-              <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-                <option value="CNY" ${card.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${card.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${card.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${card.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${card.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${card.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${card.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardPurchasePrice" value="${card.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="单价" oninput="updatePricePreview('purchase')">
+                <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+                  <option value="CNY" ${card.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${card.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${card.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${card.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${card.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${card.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${card.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardPurchaseTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((card.purchasePrice || 0) * (card.purchaseQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${card.purchaseCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <!-- 市场价 -->
@@ -6250,17 +6399,23 @@ function editCard(index, savedData) {
           <!-- 出售价 -->
           <div>
             <label class="block text-sm font-medium mb-1">出售价</label>
-            <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="${card.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
-              <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
-                <option value="CNY" ${card.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
-                <option value="USD" ${card.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
-                <option value="JPY" ${card.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
-                <option value="KRW" ${card.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
-                <option value="SGD" ${card.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
-                <option value="MYR" ${card.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
-                <option value="THB" ${card.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
-              </select>
+            <div class="grid grid-cols-2 gap-1">
+              <div class="flex gap-1">
+                <input type="number" id="cardSalePrice" value="${card.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="单价" oninput="updatePricePreview('sale')">
+                <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-16 border rounded-lg px-1 py-2 dark:bg-gray-700 dark:border-gray-600 cursor-pointer text-sm">
+                  <option value="CNY" ${card.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                  <option value="USD" ${card.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                  <option value="JPY" ${card.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                  <option value="KRW" ${card.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                  <option value="SGD" ${card.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                  <option value="MYR" ${card.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                  <option value="THB" ${card.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
+                </select>
+              </div>
+              <div class="flex gap-1">
+                <input type="text" id="cardSaleTotal" readonly class="flex-1 border rounded-lg px-3 py-2 bg-gray-50 dark:bg-gray-800 dark:border-gray-600 text-sm text-gray-600 dark:text-gray-300 cursor-not-allowed" placeholder="总价(自动)" value="${((card.salePrice || 0) * (card.saleQty || 0)).toFixed(2)}">
+                <span class="w-16 text-xs text-gray-400 self-center text-center">${card.saleCurrency || 'CNY'}</span>
+              </div>
             </div>
           </div>
           <!-- 利润 -->

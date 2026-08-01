@@ -3,6 +3,9 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+<meta http-equiv="Pragma" content="no-cache">
+<meta http-equiv="Expires" content="0">
 <title>TCG卡牌管理工具</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script src="https://cdn.tailwindcss.com"></script>
@@ -441,11 +444,8 @@
           <!-- 分组管理 -->
           <div class="mb-2">
             <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">分组管理</p>
-            <div class="grid grid-cols-2 gap-1">
-              <button id="mergeGroupBtn" onclick="showMergeGroupManager()" data-tooltip="合并子集功能。可以将选中的卡牌归集到一个自定义分组中，方便管理和查看。" class="bg-purple-50 dark:bg-purple-900/30 hover:bg-purple-100 dark:hover:bg-purple-900/50 text-purple-600 dark:text-purple-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
-                <i class="fa fa-object-group text-xs"></i> 合并
-              </button>
-              <button id="groupManagerBtn" onclick="showGroupManager()" data-tooltip="查看和管理所有分组。可以查看分组内的卡牌、删除分组等。" class="bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+            <div class="grid grid-cols-1 gap-1">
+              <button id="groupManagerBtn" onclick="showGroupManager()" data-tooltip="查看和管理所有分组，或创建分组合并卡牌。" class="bg-indigo-50 dark:bg-indigo-900/30 hover:bg-indigo-100 dark:hover:bg-indigo-900/50 text-indigo-600 dark:text-indigo-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
                 <i class="fa fa-folder-open text-xs"></i> 分组
               </button>
             </div>
@@ -471,11 +471,17 @@
           <div>
             <p class="text-[10px] text-gray-400 dark:text-gray-500 uppercase tracking-wider font-semibold mb-1.5 px-1">删除管理</p>
             <div class="grid grid-cols-2 gap-1">
-              <button id="batchDeleteBtn" onclick="batchDeleteOrClear()" data-tooltip="批量删除卡牌或清空所有数据。勾选卡牌后点击可批量删除，未勾选时点击可清空全部。" class="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+              <button id="batchDeleteBtn" onclick="batchDeleteOrClear()" data-tooltip="批量删除卡牌。勾选卡牌后点击可批量删除。" class="bg-red-50 dark:bg-red-900/30 hover:bg-red-100 dark:hover:bg-red-900/50 text-red-600 dark:text-red-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
                 <i class="fa fa-trash text-xs"></i> 删除
               </button>
               <button id="deletedCardsBtn" onclick="showDeletedCardsManager()" data-tooltip="点击进入已删除卡牌管理界面，在里面可以操作所有被删除的卡牌，包括查看详情、恢复卡牌或彻底删除。" class="bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 text-orange-600 dark:text-orange-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
                 <i class="fa fa-trash-o text-xs"></i> 已删
+              </button>
+              <button onclick="clearSampleData()" data-tooltip="清除所有示例卡牌（标记为示例的数据），不会影响你自己添加的卡牌" class="col-span-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-magic text-xs"></i> 清除示例数据
+              </button>
+              <button onclick="clearAllData()" data-tooltip="⚠️ 清空所有卡牌数据（包括自己添加的），不可恢复！" class="col-span-2 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
+                <i class="fa fa-fire text-xs"></i> 清空全部数据
               </button>
             </div>
           </div>
@@ -526,6 +532,7 @@
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">系列</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-12">编号</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">评级机构</th>
+                  <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">送评批次</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-16">分组</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-10">语言</th>
                   <th class="px-2 py-2 text-left font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider w-14">来源</th>
@@ -549,6 +556,9 @@
               <p class="text-xs text-gray-400 dark:text-gray-500 mb-3">点击左侧"新增"按钮开始添加</p>
               <button onclick="loadSampleData()" class="bg-primary text-white px-3 py-1.5 rounded-lg hover:bg-primary/90 transition-colors text-xs">
                 <i class="fa fa-magic mr-1"></i>加载示例
+              </button>
+              <button onclick="clearAllData()" class="bg-red-500 hover:bg-red-600 text-white px-3 py-1.5 rounded-lg transition-colors text-xs ml-2">
+                <i class="fa fa-trash mr-1"></i>清空所有数据
               </button>
             </div>
           </div>
@@ -732,6 +742,24 @@ async function initApp() {
     if (header) {
       header.className = `bg-gradient-to-r ${savedBgColor} text-white shadow-xl relative overflow-hidden`;
     }
+  }
+  
+  // 数据迁移：标记旧版示例数据（没有 isSample 标记的）
+  const SAMPLE_KEYS = [
+    '青眼白龙|LOB|001', '黑魔导|LOB|005', '红眼黑龙|LOB|070',
+    '皮卡丘|BS|001', '喷火龙|BS|002', '超梦|BS|010',
+    '杰尼龟|BS|015', '黑暗大法师|LOB|100', '真红眼黑龙|LOB|071',
+    '妙蛙种子|BS|020'
+  ];
+  let migrated = false;
+  cards.forEach(c => {
+    if (!c.isSample && SAMPLE_KEYS.includes(`${c.name}|${c.series}|${c.no}`)) {
+      c.isSample = true;
+      migrated = true;
+    }
+  });
+  if (migrated) {
+    localStorage.setItem('tcgCards', JSON.stringify(cards));
   }
   
   // 初始渲染
@@ -1717,127 +1745,139 @@ document.addEventListener('click', function(e) {
 });
 
 // === 打开新增卡牌模态框 ===
-function openAddCardModal() {
+function openAddCardModal(prefillData) {
   currentCard = null;
-  editingCardIndex = null; // 新增模式，无编辑索引
-  editingCardData = null; // 清除之前保存的数据
+  editingCardIndex = null;
+  editingCardData = null;
+  
+  const data = prefillData || {};
   
   const content = `
     <form id="cardForm" class="space-y-3">
-      <!-- 卡牌名称 -->
       <div>
         <label class="block text-sm font-medium mb-1">
           卡牌名称 <span class="text-red-500">*</span>
         </label>
-        <input type="text" id="cardName" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
+        <input type="text" id="cardName" value="${data.name || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent" placeholder="请输入卡牌名称" required>
       </div>
       
-      <!-- 分类和类型 -->
       <div class="grid grid-cols-2 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">分类</label>
           <select id="cardCategory" onchange="handleCategoryChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
-            ${generateCategoryOptions()}
+            ${generateCategoryOptions(data.category)}
           </select>
-          <input type="text" id="cardCategoryCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义分类">
+          <input type="text" id="cardCategoryCustom" value="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(data.category) ? data.category : ''}" class="${!['宝可梦', 'OPCG', '游戏王', '黑白双翼', '其他'].includes(data.category) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义分类">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">类型</label>
           <select id="cardType" onchange="handleTypeChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer">
-            <option value="裸卡">裸卡</option>
-            <option value="评级卡">评级卡</option>
-            <option value="卡册">卡册</option>
-            <option value="卡包">卡包</option>
-            <option value="other">其他</option>
+            <option value="裸卡" ${data.cardType === '裸卡' ? 'selected' : ''}>裸卡</option>
+            <option value="评级卡" ${data.cardType === '评级卡' ? 'selected' : ''}>评级卡</option>
+            <option value="卡册" ${data.cardType === '卡册' ? 'selected' : ''}>卡册</option>
+            <option value="卡包" ${data.cardType === '卡包' ? 'selected' : ''}>卡包</option>
+            <option value="other" ${data.cardType !== '裸卡' && data.cardType !== '评级卡' && data.cardType !== '卡册' && data.cardType !== '卡包' ? 'selected' : ''}>其他</option>
           </select>
-          <input type="text" id="cardTypeCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义类型">
+          <input type="text" id="cardTypeCustom" value="${data.cardType && !['裸卡', '评级卡', '卡册', '卡包'].includes(data.cardType) ? data.cardType : ''}" class="${data.cardType && !['裸卡', '评级卡', '卡册', '卡包'].includes(data.cardType) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入自定义类型">
           <p id="gradingPrompt" class="hidden mt-1 text-xs text-amber-500"><i class="fa fa-exclamation-circle"></i> 请选择评级机构</p>
         </div>
       </div>
       
-      <!-- 系列和编号 -->
       <div class="grid grid-cols-2 gap-3">
         <div class="relative">
           <label class="block text-sm font-medium mb-1">系列</label>
-          <input type="text" id="cardSeries" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：LOB" onfocus="showSeriesDropdown()" oninput="filterSeriesDropdown(this.value)">
+          <input type="text" id="cardSeries" value="${data.series || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：LOB" onfocus="showSeriesDropdown()" oninput="filterSeriesDropdown(this.value)">
           <div id="seriesDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">编号</label>
-          <input type="text" id="cardNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：001">
+          <input type="text" id="cardNo" value="${data.no || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：001">
         </div>
       </div>
       
-      <!-- 语言、库存、评级机构 -->
       <div class="grid grid-cols-3 gap-3">
         <div>
           <label class="block text-sm font-medium mb-1">语言</label>
           <select id="cardLanguage" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-            <option value="中文">中文</option>
-            <option value="日文">日文</option>
-            <option value="英文">英文</option>
-            <option value="韩文">韩文</option>
+            <option value="中文" ${data.language === '中文' ? 'selected' : ''}>中文</option>
+            <option value="日文" ${data.language === '日文' ? 'selected' : ''}>日文</option>
+            <option value="英文" ${data.language === '英文' ? 'selected' : ''}>英文</option>
+            <option value="韩文" ${data.language === '韩文' ? 'selected' : ''}>韩文</option>
           </select>
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">库存 <span class="text-xs text-gray-400">(自动)</span></label>
-          <input type="number" id="cardQty" value="0" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
+          <input type="number" id="cardQty" value="${data.qty || 0}" min="0" readonly class="w-full border rounded-lg px-3 py-2 bg-gray-100 dark:bg-gray-600 dark:border-gray-600 text-sm cursor-not-allowed">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">评级机构</label>
           <select id="gradingOrg" onchange="handleGradingOrgChange(this)" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-            <option value="">无</option>
-            <option value="PSA">PSA</option>
-            <option value="CGC">CGC</option>
-            <option value="BGS">BGS</option>
-            <option value="SGC">SGC</option>
-            <option value="ARS">ARS</option>
-            <option value="other">其他</option>
+            <option value="" ${!data.gradingOrg ? 'selected' : ''}>无</option>
+            <option value="PSA" ${data.gradingOrg === 'PSA' ? 'selected' : ''}>PSA</option>
+            <option value="CGC" ${data.gradingOrg === 'CGC' ? 'selected' : ''}>CGC</option>
+            <option value="BGS" ${data.gradingOrg === 'BGS' ? 'selected' : ''}>BGS</option>
+            <option value="SGC" ${data.gradingOrg === 'SGC' ? 'selected' : ''}>SGC</option>
+            <option value="ARS" ${data.gradingOrg === 'ARS' ? 'selected' : ''}>ARS</option>
+            <option value="other" ${data.gradingOrg && !['PSA', 'CGC', 'BGS', 'SGC', 'ARS'].includes(data.gradingOrg) ? 'selected' : ''}>其他</option>
           </select>
-          <input type="text" id="gradingOrgCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他评级机构">
+          <input type="text" id="gradingOrgCustom" value="${data.gradingOrg && !['PSA', 'CGC', 'BGS', 'SGC', 'ARS'].includes(data.gradingOrg) ? data.gradingOrg : ''}" class="${data.gradingOrg && !['PSA', 'CGC', 'BGS', 'SGC', 'ARS'].includes(data.gradingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他评级机构">
         </div>
       </div>
       
-      <!-- 是否送评开关 -->
       <div class="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg mt-3">
         <label class="relative inline-flex items-center cursor-pointer">
-          <input type="checkbox" id="isSubmitting" class="sr-only peer" onchange="handleSubmittingToggle(this)">
+          <input type="checkbox" id="isSubmitting" class="sr-only peer" onchange="handleSubmittingToggle(this)" ${data.isSubmitting ? 'checked' : ''}>
           <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-purple-300 dark:peer-focus:ring-purple-800 rounded-full peer dark:bg-gray-700 peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all dark:border-gray-600 peer-checked:bg-purple-500"></div>
           <span class="ml-3 text-sm font-medium text-gray-700 dark:text-gray-300">送评中</span>
         </label>
-        <span id="submittingStatusText" class="text-xs text-purple-600 dark:text-purple-400">未送评</span>
+        <span id="submittingStatusText" class="text-xs text-purple-600 dark:text-purple-400">${data.isSubmitting ? '送评中' : '未送评'}</span>
       </div>
       
       <!-- 送评信息（默认隐藏） -->
-      <div id="submittingInfo" class="hidden grid grid-cols-2 gap-3 mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
+      <div id="submittingInfo" class="${data.isSubmitting ? '' : 'hidden'} grid grid-cols-2 gap-3 mt-3 p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-200 dark:border-purple-800 rounded-lg">
         <div>
           <label class="block text-sm font-medium mb-1">送评机构</label>
           <select id="submittingOrg" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
             <option value="">请选择</option>
-            <option value="PSA">PSA</option>
-            <option value="CGC">CGC</option>
-            <option value="BGS">BGS</option>
-            <option value="SGC">SGC</option>
-            <option value="ARS">ARS</option>
-            <option value="other">其他</option>
+            <option value="PSA" ${data.submittingOrg === 'PSA' ? 'selected' : ''}>PSA</option>
+            <option value="CGC" ${data.submittingOrg === 'CGC' ? 'selected' : ''}>CGC</option>
+            <option value="BGS" ${data.submittingOrg === 'BGS' ? 'selected' : ''}>BGS</option>
+            <option value="SGC" ${data.submittingOrg === 'SGC' ? 'selected' : ''}>SGC</option>
+            <option value="ARS" ${data.submittingOrg === 'ARS' ? 'selected' : ''}>ARS</option>
+            <option value="other" ${data.submittingOrg && !['PSA','CGC','BGS','SGC','ARS'].includes(data.submittingOrg) ? 'selected' : ''}>其他</option>
           </select>
-          <input type="text" id="submittingOrgCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评机构">
+          <input type="text" id="submittingOrgCustom" value="${data.submittingOrg && !['PSA','CGC','BGS','SGC','ARS'].includes(data.submittingOrg) ? data.submittingOrg : ''}" class="${data.submittingOrg && !['PSA','CGC','BGS','SGC','ARS'].includes(data.submittingOrg) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评机构">
         </div>
         <div>
           <label class="block text-sm font-medium mb-1">送评途径</label>
           <select id="submittingMethod" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
             <option value="">请选择</option>
-            <option value="官网直送">官网直送</option>
-            <option value="国内代理">国内代理</option>
-            <option value="淘宝代购">淘宝代购</option>
-            <option value="其他">其他</option>
+            <option value="官网直送" ${data.submittingMethod === '官网直送' ? 'selected' : ''}>官网直送</option>
+            <option value="国内代理" ${data.submittingMethod === '国内代理' ? 'selected' : ''}>国内代理</option>
+            <option value="淘宝代购" ${data.submittingMethod === '淘宝代购' ? 'selected' : ''}>淘宝代购</option>
+            <option value="其他" ${data.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(data.submittingMethod) ? 'selected' : ''}>其他</option>
           </select>
-          <input type="text" id="submittingMethodCustom" class="hidden w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评途径">
+          <input type="text" id="submittingMethodCustom" value="${data.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(data.submittingMethod) ? data.submittingMethod : ''}" class="${data.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(data.submittingMethod) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="输入其他送评途径">
+        </div>
+        <!-- 送评批次号 -->
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1">送评批次号 <span class="text-xs text-gray-400">(多张评级卡合并到同一单时填写，用"/"分隔展示)</span></label>
+          <input type="text" id="submittingBatch" value="${data.submittingBatch || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：PSA-2024-001，多张卡填相同编号即视为同一单">
+          <p class="mt-1 text-xs text-purple-500"><i class="fa fa-info-circle"></i> 相同批次号的卡牌将在列表中用"/"分隔展示，方便合并统计</p>
         </div>
         <!-- 送评凭证 -->
         <div class="col-span-2">
           <label class="block text-sm font-medium mb-1">送评凭证 <span class="text-xs text-gray-400">(可选)</span></label>
-          <div class="flex flex-wrap gap-2" id="submittingVoucherPreview"></div>
+          <div class="flex flex-wrap gap-2" id="submittingVoucherPreview">
+            ${data.submittingVouchers && data.submittingVouchers.length > 0 ? data.submittingVouchers.map((img, idx) => `
+              <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <img src="${img}" class="w-full h-full object-cover cursor-pointer" alt="送评凭证${idx + 1}" onclick="openImagePreview(this.src)">
+                <button type="button" onclick="event.stopPropagation(); removeVoucher(${idx}, 'submitting')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            `).join('') : ''}
+          </div>
           <label class="mt-2 flex items-center justify-center w-full border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg py-3 cursor-pointer hover:border-primary hover:bg-primary/5 transition-colors">
             <i class="fa fa-upload text-gray-400 mr-2"></i>
             <span class="text-sm text-gray-500 dark:text-gray-400">添加送评凭证图片</span>
@@ -1863,22 +1903,29 @@ function openAddCardModal() {
           <div class="text-xs font-semibold text-blue-600 dark:text-blue-400 uppercase tracking-wider mb-2">购入信息</div>
           <div class="relative">
             <label class="block text-sm font-medium mb-1">来源</label>
-            <input type="text" id="cardSource" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：淘宝" onfocus="showSourceDropdown()" oninput="filterSourceDropdown(this.value)">
+            <input type="text" id="cardSource" value="${data.source || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：淘宝" onfocus="showSourceDropdown()" oninput="filterSourceDropdown(this.value)">
             <div id="sourceDropdown" class="hidden absolute z-50 w-full mt-1 bg-white dark:bg-gray-800 border border-gray-300 dark:border-gray-600 rounded-lg shadow-lg max-h-48 overflow-y-auto"></div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">来源链接 <span class="text-xs text-gray-400">(可选)</span></label>
-            <input type="url" id="cardSourceLink" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+            <input type="url" id="cardSourceLink" value="${data.sourceLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">购入物流 <span class="text-xs text-gray-400">(可选)</span></label>
-            <input type="text" id="cardPurchaseTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF123456789">
+            <input type="text" id="cardPurchaseTrackingNo" value="${data.purchaseTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF123456789">
           </div>
           <!-- 购入凭证图片 -->
           <div>
             <label class="block text-sm font-medium mb-1">购入凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="purchaseVoucherPreview">
-              <!-- 预览区域 -->
+              ${data.purchaseVouchers && data.purchaseVouchers.length > 0 ? data.purchaseVouchers.map((img, idx) => `
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover cursor-pointer" alt="凭证${idx + 1}" onclick="openImagePreview(this.src)">
+                  <button type="button" onclick="event.stopPropagation(); removeVoucher(${idx}, 'purchase')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              `).join('') : ''}
             </div>
             <div class="flex gap-2 mt-2">
               <input type="file" id="purchaseVoucherInput" accept="image/*" multiple class="hidden" onchange="handleVoucherUpload(this, 'purchase')">
@@ -1896,21 +1943,28 @@ function openAddCardModal() {
           <div class="text-xs font-semibold text-green-600 dark:text-green-400 uppercase tracking-wider mb-2">出售信息</div>
           <div>
             <label class="block text-sm font-medium mb-1">出售</label>
-            <input type="text" id="cardSaleSource" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：闲鱼">
+            <input type="text" id="cardSaleSource" value="${data.saleSource || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：闲鱼">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">出售链接 <span class="text-xs text-gray-400">(可选)</span></label>
-            <input type="url" id="cardSaleLink" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
+            <input type="url" id="cardSaleLink" value="${data.saleLink || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="https://...">
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">出售物流 <span class="text-xs text-gray-400">(可选)</span></label>
-            <input type="text" id="cardSaleTrackingNo" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF987654321">
+            <input type="text" id="cardSaleTrackingNo" value="${data.saleTrackingNo || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：SF987654321">
           </div>
           <!-- 出售凭证图片 -->
           <div>
             <label class="block text-sm font-medium mb-1">出售凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="saleVoucherPreview">
-              <!-- 预览区域 -->
+              ${data.saleVouchers && data.saleVouchers.length > 0 ? data.saleVouchers.map((img, idx) => `
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover cursor-pointer" alt="凭证${idx + 1}" onclick="openImagePreview(this.src)">
+                  <button type="button" onclick="event.stopPropagation(); removeVoucher(${idx}, 'sale')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
+                    <i class="fa fa-times"></i>
+                  </button>
+                </div>
+              `).join('') : ''}
             </div>
             <div class="flex gap-2 mt-2">
               <input type="file" id="saleVoucherInput" accept="image/*" multiple class="hidden" onchange="handleVoucherUpload(this, 'sale')">
@@ -1933,21 +1987,21 @@ function openAddCardModal() {
           <!-- 购入数量 -->
           <div>
             <label class="block text-sm font-medium mb-1">购入数量</label>
-            <input type="number" id="cardPurchaseQty" value="0" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+            <input type="number" id="cardPurchaseQty" value="${data.purchaseQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
           </div>
           <!-- 购入价 -->
           <div>
             <label class="block text-sm font-medium mb-1">购入价</label>
             <div class="flex gap-1">
-              <input type="number" id="cardPurchasePrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
+              <input type="number" id="cardPurchasePrice" value="${data.purchasePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('purchase')">
               <select id="cardPurchaseCurrency" onchange="updatePricePreview('purchase')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY">CNY</option>
-                <option value="USD">USD</option>
-                <option value="JPY">JPY</option>
-                <option value="KRW">KRW</option>
-                <option value="SGD">SGD</option>
-                <option value="MYR">MYR</option>
-                <option value="THB">THB</option>
+                <option value="CNY" ${data.purchaseCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${data.purchaseCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${data.purchaseCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${data.purchaseCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${data.purchaseCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${data.purchaseCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${data.purchaseCurrency === 'THB' ? 'selected' : ''}>THB</option>
               </select>
             </div>
           </div>
@@ -1955,15 +2009,15 @@ function openAddCardModal() {
           <div>
             <label class="block text-sm font-medium mb-1">市场价 <span class="text-xs text-gray-400">(参考)</span></label>
             <div class="flex gap-1">
-              <input type="number" id="cardMarketPrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('market')">
+              <input type="number" id="cardMarketPrice" value="${data.marketPrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('market')">
               <select id="cardMarketCurrency" onchange="updatePricePreview('market')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY">CNY</option>
-                <option value="USD">USD</option>
-                <option value="JPY">JPY</option>
-                <option value="KRW">KRW</option>
-                <option value="SGD">SGD</option>
-                <option value="MYR">MYR</option>
-                <option value="THB">THB</option>
+                <option value="CNY" ${data.marketCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${data.marketCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${data.marketCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${data.marketCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${data.marketCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${data.marketCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${data.marketCurrency === 'THB' ? 'selected' : ''}>THB</option>
               </select>
             </div>
           </div>
@@ -1979,21 +2033,21 @@ function openAddCardModal() {
           <!-- 出售数量 -->
           <div>
             <label class="block text-sm font-medium mb-1">出售数量</label>
-            <input type="number" id="cardSaleQty" value="0" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
+            <input type="number" id="cardSaleQty" value="${data.saleQty || 0}" min="0" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0" oninput="updateStock()">
           </div>
           <!-- 出售价 -->
           <div>
             <label class="block text-sm font-medium mb-1">出售价</label>
             <div class="flex gap-1">
-              <input type="number" id="cardSalePrice" value="0" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
+              <input type="number" id="cardSalePrice" value="${data.salePrice || 0}" min="0" step="0.01" class="flex-1 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="0.00" oninput="updatePricePreview('sale')">
               <select id="cardSaleCurrency" onchange="updatePricePreview('sale')" class="w-20 border rounded-lg px-2 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent cursor-pointer text-sm">
-                <option value="CNY">CNY</option>
-                <option value="USD">USD</option>
-                <option value="JPY">JPY</option>
-                <option value="KRW">KRW</option>
-                <option value="SGD">SGD</option>
-                <option value="MYR">MYR</option>
-                <option value="THB">THB</option>
+                <option value="CNY" ${data.saleCurrency === 'CNY' ? 'selected' : ''}>CNY</option>
+                <option value="USD" ${data.saleCurrency === 'USD' ? 'selected' : ''}>USD</option>
+                <option value="JPY" ${data.saleCurrency === 'JPY' ? 'selected' : ''}>JPY</option>
+                <option value="KRW" ${data.saleCurrency === 'KRW' ? 'selected' : ''}>KRW</option>
+                <option value="SGD" ${data.saleCurrency === 'SGD' ? 'selected' : ''}>SGD</option>
+                <option value="MYR" ${data.saleCurrency === 'MYR' ? 'selected' : ''}>MYR</option>
+                <option value="THB" ${data.saleCurrency === 'THB' ? 'selected' : ''}>THB</option>
               </select>
             </div>
           </div>
@@ -2012,10 +2066,19 @@ function openAddCardModal() {
         <label class="block text-sm font-medium mb-1">卡牌照片 <span class="text-xs text-gray-400">(可添加多张)</span></label>
         <div class="flex flex-col gap-3">
           <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
-            <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
-              <i class="fa fa-image text-2xl mb-1 block"></i>
-              暂无图片
-            </div>
+            ${data.images && data.images.length > 0 ? data.images.map((img, idx) => `
+              <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                <img src="${img}" class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" alt="卡牌图片${idx + 1}" onclick="openImagePreview(this.src)">
+                <button type="button" onclick="removeCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
+                  <i class="fa fa-times"></i>
+                </button>
+              </div>
+            `).join('') : `
+              <div class="w-20 h-24 flex items-center justify-center text-gray-400 text-xs" id="emptyImageHint">
+                <i class="fa fa-image text-2xl mb-1 block"></i>
+                暂无图片
+              </div>
+            `}
           </div>
           <div class="flex gap-2">
             <input type="file" id="cardImageInput" accept="image/*" multiple class="hidden" onchange="handleCardImagesUpload(this)">
@@ -2042,6 +2105,106 @@ function openAddCardModal() {
   `;
   
   showModal(content, '新增卡牌');
+  
+  if (prefillData) {
+    setTimeout(() => {
+      if (prefillData.purchaseQty !== undefined) document.getElementById('cardPurchaseQty').value = prefillData.purchaseQty;
+      if (prefillData.purchasePrice !== undefined) document.getElementById('cardPurchasePrice').value = prefillData.purchasePrice;
+      if (prefillData.purchaseCurrency) document.getElementById('cardPurchaseCurrency').value = prefillData.purchaseCurrency;
+      if (prefillData.marketPrice !== undefined) document.getElementById('cardMarketPrice').value = prefillData.marketPrice;
+      if (prefillData.marketCurrency) document.getElementById('cardMarketCurrency').value = prefillData.marketCurrency;
+      if (prefillData.saleQty !== undefined) document.getElementById('cardSaleQty').value = prefillData.saleQty;
+      if (prefillData.salePrice !== undefined) document.getElementById('cardSalePrice').value = prefillData.salePrice;
+      if (prefillData.saleCurrency) document.getElementById('cardSaleCurrency').value = prefillData.saleCurrency;
+      if (prefillData.source) document.getElementById('cardSource').value = prefillData.source;
+      if (prefillData.sourceLink) document.getElementById('cardSourceLink').value = prefillData.sourceLink;
+      if (prefillData.purchaseTrackingNo) document.getElementById('cardPurchaseTrackingNo').value = prefillData.purchaseTrackingNo;
+      if (prefillData.saleSource) document.getElementById('cardSaleSource').value = prefillData.saleSource;
+      if (prefillData.saleLink) document.getElementById('cardSaleLink').value = prefillData.saleLink;
+      if (prefillData.saleTrackingNo) document.getElementById('cardSaleTrackingNo').value = prefillData.saleTrackingNo;
+      
+      const isInStock = prefillData.isInStock || false;
+      const stockCheckbox = document.getElementById('isInStock');
+      if (stockCheckbox) {
+        stockCheckbox.checked = isInStock;
+        handleStockToggle(stockCheckbox);
+      }
+      
+      const isSubmitting = prefillData.isSubmitting || false;
+      const submittingCheckbox = document.getElementById('isSubmitting');
+      if (submittingCheckbox) {
+        submittingCheckbox.checked = isSubmitting;
+        handleSubmittingToggle(submittingCheckbox);
+      }
+      if (isSubmitting) {
+        // 正确恢复送评机构（处理自定义值）
+        if (prefillData.submittingOrg) {
+          const subOrgSelect = document.getElementById('submittingOrg');
+          const knownOrgs = ['PSA', 'CGC', 'BGS', 'SGC', 'ARS', ''];
+          if (knownOrgs.includes(prefillData.submittingOrg)) {
+            subOrgSelect.value = prefillData.submittingOrg;
+          } else {
+            subOrgSelect.value = 'other';
+            const customInput = document.getElementById('submittingOrgCustom');
+            if (customInput) {
+              customInput.value = prefillData.submittingOrg;
+              customInput.classList.remove('hidden');
+            }
+          }
+        }
+        // 正确恢复送评途径（处理自定义值）
+        if (prefillData.submittingMethod) {
+          const subMethodSelect = document.getElementById('submittingMethod');
+          const knownMethods = ['官网直送', '国内代理', '淘宝代购', '其他', ''];
+          if (knownMethods.includes(prefillData.submittingMethod)) {
+            subMethodSelect.value = prefillData.submittingMethod;
+          } else {
+            subMethodSelect.value = '其他';
+            const customInput = document.getElementById('submittingMethodCustom');
+            if (customInput) {
+              customInput.value = prefillData.submittingMethod;
+              customInput.classList.remove('hidden');
+            }
+          }
+        }
+      }
+      
+      if (prefillData.groups) {
+        cardGroupsList = [...prefillData.groups];
+        renderGroupsPreview();
+      }
+      
+      if (prefillData.images) {
+        cardImagesList = [...prefillData.images];
+        renderCardImagesPreview();
+      }
+      
+      if (prefillData.purchaseVouchers) {
+        purchaseVouchersList = [...prefillData.purchaseVouchers];
+        renderVoucherPreview('purchase');
+      }
+      
+      if (prefillData.saleVouchers) {
+        saleVouchersList = [...prefillData.saleVouchers];
+        renderVoucherPreview('sale');
+      }
+      
+      if (prefillData.submittingVouchers) {
+        submittingVouchersList = [...prefillData.submittingVouchers];
+        renderSubmittingVoucherPreview();
+      }
+      
+      if (prefillData.submittingBatch) {
+        const batchInput = document.getElementById('submittingBatch');
+        if (batchInput) batchInput.value = prefillData.submittingBatch;
+      }
+      
+      updateStock();
+      updatePricePreview('purchase');
+      updatePricePreview('market');
+      updatePricePreview('sale');
+    }, 50);
+  }
   
   document.getElementById('cardForm').onsubmit = function(e) {
     e.preventDefault();
@@ -2124,8 +2287,13 @@ function openAddCardModal() {
       saleVouchers: saleVouchersList || [],
       // 送评相关字段
       isSubmitting: document.getElementById('isSubmitting')?.checked || false,
-      submittingOrg: document.getElementById('submittingOrg')?.value || '',
-      submittingMethod: document.getElementById('submittingMethod')?.value || '',
+      submittingOrg: document.getElementById('submittingOrg')?.value === 'other'
+        ? (document.getElementById('submittingOrgCustom')?.value || '').trim()
+        : (document.getElementById('submittingOrg')?.value || ''),
+      submittingMethod: document.getElementById('submittingMethod')?.value === '其他'
+        ? (document.getElementById('submittingMethodCustom')?.value || '').trim()
+        : (document.getElementById('submittingMethod')?.value || ''),
+      submittingBatch: document.getElementById('submittingBatch')?.value?.trim() || '',
       submittingVouchers: submittingVouchersList || []
     });
     save();
@@ -2394,7 +2562,7 @@ function showDeletedCardsManager() {
                 <div class="w-12 h-16 bg-gray-200 dark:bg-gray-600 rounded flex items-center justify-center text-xs text-gray-400">无图</div>
               `}
               <div class="flex-1 min-w-0">
-                <div class="font-medium text-sm truncate">${card.name}</div>
+                <div class="font-medium text-sm truncate">${card.name}${card.submittingBatch ? ` <span class="ml-1 px-1 py-0.5 rounded text-[9px] bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300">📦 ${card.submittingBatch}</span>` : ''}</div>
                 <div class="text-xs text-gray-500 dark:text-gray-400">
                   ${card.category} · ${card.series || '-'} · ${card.no || '-'}
                 </div>
@@ -2791,17 +2959,95 @@ function showMoreMenu() {
   showModal(content, '更多功能');
 }
 
-// === 显示分组管理器 ===
+// === 分组管理主入口 ===
 function showGroupManager() {
   const groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
-  
-  if (groups.length === 0) {
-    showToast('提示', '暂无分组，请先创建分组', 'warning');
-    return;
-  }
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  const selectedCount = checkboxes.length;
   
   const content = `
     <div class="space-y-4">
+      ${selectedCount > 0 ? `
+        <div class="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg text-center">
+          <p class="text-sm text-purple-700 dark:text-purple-300">
+            <i class="fa fa-info-circle mr-1"></i>
+            已选中 <strong>${selectedCount}</strong> 张卡牌，可合并到分组
+          </p>
+        </div>
+      ` : ''}
+      
+      <div class="space-y-3">
+        <button onclick="showCreateGroupDialog()" class="w-full flex items-center gap-4 p-4 bg-indigo-50 dark:bg-indigo-900/20 hover:bg-indigo-100 dark:hover:bg-indigo-900/40 rounded-xl transition-colors text-left">
+          <div class="w-12 h-12 rounded-full bg-indigo-500/10 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-plus text-indigo-500 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">新建分组</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">创建一个新的卡牌分组${selectedCount > 0 ? '，可将选中卡牌直接归入' : ''}</p>
+          </div>
+          <i class="fa fa-chevron-right text-gray-400"></i>
+        </button>
+        
+        <button onclick="showGroupListManager()" class="w-full flex items-center gap-4 p-4 ${groups.length > 0 ? 'bg-purple-50 dark:bg-purple-900/20 hover:bg-purple-100 dark:hover:bg-purple-900/40' : 'bg-gray-100 dark:bg-gray-700/40 opacity-60 cursor-not-allowed'} rounded-xl transition-colors text-left" ${groups.length === 0 ? 'disabled' : ''}>
+          <div class="w-12 h-12 rounded-full bg-purple-500/10 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-folder-open text-purple-500 text-xl"></i>
+          </div>
+          <div class="flex-1">
+            <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">管理已有分组</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">${groups.length > 0 ? `共 ${groups.length} 个分组，点击查看和管理` : '暂无分组，请先新建'}</p>
+          </div>
+          <i class="fa fa-chevron-right text-gray-400"></i>
+        </button>
+        
+        ${selectedCount > 0 && groups.length > 0 ? `
+          <button onclick="showMergeGroupManager()" class="w-full flex items-center gap-4 p-4 bg-amber-50 dark:bg-amber-900/20 hover:bg-amber-100 dark:hover:bg-amber-900/40 rounded-xl transition-colors text-left">
+            <div class="w-12 h-12 rounded-full bg-amber-500/10 flex items-center justify-center flex-shrink-0">
+              <i class="fa fa-object-group text-amber-500 text-xl"></i>
+            </div>
+            <div class="flex-1">
+              <p class="font-semibold text-sm text-gray-800 dark:text-gray-200">合并卡牌到分组</p>
+              <p class="text-xs text-gray-500 dark:text-gray-400 mt-0.5">将选中的 ${selectedCount} 张卡牌归入已有分组</p>
+            </div>
+            <i class="fa fa-chevron-right text-gray-400"></i>
+          </button>
+        ` : ''}
+      </div>
+      
+      <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm">关闭</button>
+    </div>
+  `;
+  
+  showModal(content, '分组管理');
+}
+
+// === 管理已有分组列表 ===
+function showGroupListManager() {
+  const groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  if (groups.length === 0) {
+    showGroupManager();
+    return;
+  }
+  
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  const selectedCount = checkboxes.length;
+  
+  const content = `
+    <div class="space-y-4">
+      ${selectedCount > 0 ? `
+        <div class="bg-purple-50 dark:bg-purple-900/20 p-3 rounded-lg flex items-center justify-between">
+          <div>
+            <p class="text-sm font-medium text-purple-700 dark:text-purple-300">
+              已选中 <strong>${selectedCount}</strong> 张卡牌
+            </p>
+            <p class="text-xs text-gray-500">可将选中卡牌合并到分组</p>
+          </div>
+          <button onclick="showMergeGroupManager()" class="bg-purple-500 hover:bg-purple-600 text-white px-3 py-2 rounded-lg text-sm transition-colors whitespace-nowrap">
+            <i class="fa fa-object-group mr-1"></i>合并
+          </button>
+        </div>
+      ` : ''}
+      
       <div class="space-y-2 max-h-64 overflow-y-auto">
         ${groups.map((group, index) => `
           <div class="flex items-center gap-3 p-3 bg-purple-50 dark:bg-purple-900/20 rounded-lg">
@@ -2824,13 +3070,89 @@ function showGroupManager() {
         `).join('')}
       </div>
       
-      <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
-        <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">关闭</button>
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-700 flex gap-2">
+        <button onclick="showGroupManager()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors text-sm">
+          <i class="fa fa-arrow-left mr-1"></i>返回
+        </button>
+        <button onclick="showCreateGroupDialog()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg transition-colors text-sm">
+          <i class="fa fa-plus mr-1"></i>新建分组
+        </button>
       </div>
     </div>
   `;
   
-  showModal(content, '分组管理');
+  showModal(content, '管理已有分组');
+}
+
+// === 新建分组对话框 ===
+function showCreateGroupDialog() {
+  const checkboxes = document.querySelectorAll('.card-checkbox:checked');
+  const selectedCount = checkboxes.length;
+  
+  const content = `
+    <div class="space-y-4">
+      ${selectedCount > 0 ? `
+        <div class="bg-blue-50 dark:bg-blue-900/20 p-3 rounded-lg">
+          <p class="text-sm text-blue-700 dark:text-blue-300">
+            <i class="fa fa-info-circle mr-1"></i>
+            已选中 <strong>${selectedCount}</strong> 张卡牌，创建分组后可合并进去
+          </p>
+        </div>
+      ` : ''}
+      
+      <div>
+        <label class="block text-sm font-medium mb-2">分组名称</label>
+        <input type="text" id="newGroupNameInput" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600" placeholder="如：高价值卡牌、宝可梦收藏、在售中..." autofocus>
+        <p class="mt-1 text-xs text-gray-400"><i class="fa fa-info-circle"></i> 创建后可在卡牌编辑中归属到该分组</p>
+      </div>
+      
+      <div class="flex gap-2 pt-2">
+        <button onclick="confirmCreateGroup()" class="flex-1 bg-purple-500 hover:bg-purple-600 text-white py-2 rounded-lg transition-colors">
+          <i class="fa fa-check mr-1"></i>创建分组
+        </button>
+        <button onclick="showGroupManager()" class="flex-1 bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
+          <i class="fa fa-arrow-left mr-1"></i>返回
+        </button>
+      </div>
+    </div>
+  `;
+  
+  showModal(content, '新建分组');
+  setTimeout(() => {
+    const input = document.getElementById('newGroupNameInput');
+    if (input) input.focus();
+  }, 100);
+}
+
+// === 确认创建分组 ===
+function confirmCreateGroup() {
+  const name = document.getElementById('newGroupNameInput')?.value?.trim();
+  if (!name) {
+    showToast('提示', '请输入分组名称', 'warning');
+    return;
+  }
+  
+  let groups = JSON.parse(localStorage.getItem('tcgCardGroups')) || [];
+  
+  if (groups.some(g => g.name === name)) {
+    showToast('提示', '该分组名称已存在', 'warning');
+    return;
+  }
+  
+  groups.push({
+    name: name,
+    cardIds: [],
+    createdAt: Date.now()
+  });
+  
+  localStorage.setItem('tcgCardGroups', JSON.stringify(groups));
+  showToast('成功', `分组"${name}"已创建`);
+  
+  closeModal();
+  
+  if (groups.length > 0) {
+    showGroupManager();
+  }
 }
 
 // === 查看分组卡牌 ===
@@ -2937,6 +3259,27 @@ function showStats() {
     totalValue += (parseFloat(card.purchasePrice) || 0) * (parseInt(card.purchaseQty) || 0);
   });
   
+  // 计算批次统计
+  const batchStats = {};
+  cards.forEach(card => {
+    if (card.submittingBatch) {
+      if (!batchStats[card.submittingBatch]) {
+        batchStats[card.submittingBatch] = { count: 0, org: card.submittingOrg || '', method: card.submittingMethod || '', names: [] };
+      }
+      batchStats[card.submittingBatch].count++;
+      batchStats[card.submittingBatch].names.push(card.name || '未命名');
+      if (!batchStats[card.submittingBatch].org && card.submittingOrg) {
+        batchStats[card.submittingBatch].org = card.submittingOrg;
+      }
+      if (!batchStats[card.submittingBatch].method && card.submittingMethod) {
+        batchStats[card.submittingBatch].method = card.submittingMethod;
+      }
+    }
+  });
+  
+  const batchCount = Object.keys(batchStats).length;
+  const batchCardsCount = Object.values(batchStats).reduce((sum, b) => sum + b.count, 0);
+  
   const content = `
     <div class="space-y-6">
       <div class="grid grid-cols-2 gap-4">
@@ -2961,6 +3304,28 @@ function showStats() {
           `).join('')}
         </div>
       </div>
+      
+      ${batchCount > 0 ? `
+      <div>
+        <h4 class="font-medium mb-3 flex items-center gap-2">送评批次统计 <span class="text-xs text-gray-400 font-normal">(${batchCount} 批 / ${batchCardsCount} 张卡)</span></h4>
+        <div class="space-y-2">
+          ${Object.entries(batchStats).map(([batch, info]) => `
+            <div class="bg-amber-50 dark:bg-amber-900/20 rounded-lg p-3 border border-amber-200 dark:border-amber-800">
+              <div class="flex justify-between items-center mb-1">
+                <span class="font-medium text-amber-700 dark:text-amber-300 text-sm">📦 ${batch}</span>
+                <span class="text-xs bg-amber-200 dark:bg-amber-800 text-amber-800 dark:text-amber-200 px-2 py-0.5 rounded-full">${info.count} 张</span>
+              </div>
+              <div class="text-xs text-gray-500 dark:text-gray-400 mb-1">
+                ${info.org ? `机构: ${info.org}` : ''} ${info.method ? `| 途径: ${info.method}` : ''}
+              </div>
+              <div class="text-xs text-gray-600 dark:text-gray-400 truncate" title="${info.names.join(' / ')}">
+                ${info.names.join(' / ')}
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+      ` : ''}
     </div>
   `;
   
@@ -3662,7 +4027,6 @@ function openPriceChecker() {
   const series = document.getElementById('cardSeries')?.value?.trim();
   const no = document.getElementById('cardNo')?.value?.trim();
   
-  // 构建搜索关键词
   let searchQuery = '';
   if (series && no) {
     searchQuery = `${series} ${no}`;
@@ -3673,14 +4037,48 @@ function openPriceChecker() {
     return;
   }
   
-  // 保存当前编辑的卡牌数据
+  const isEditMode = editingCardIndex !== null && cards[editingCardIndex];
+  
+  const imgList = isEditMode ? editCardImagesList : cardImagesList;
+  const purVList = isEditMode ? editPurchaseVouchersList : purchaseVouchersList;
+  const saleVList = isEditMode ? editSaleVouchersList : saleVouchersList;
+  const subVList = isEditMode ? editSubmittingVouchersList : submittingVouchersList;
+  
+  // 转换"other"为实际自定义值，与表单提交逻辑保持一致
+  const categorySelect = document.getElementById('cardCategory');
+  const categoryValue = categorySelect?.value === 'other'
+    ? (document.getElementById('cardCategoryCustom')?.value || '').trim()
+    : (categorySelect?.value || '');
+  
+  const typeSelect = document.getElementById('cardType');
+  const typeValue = typeSelect?.value === 'other'
+    ? (document.getElementById('cardTypeCustom')?.value || '').trim()
+    : (typeSelect?.value || '裸卡');
+  
+  const gradingSelect = document.getElementById('gradingOrg');
+  const gradingValue = gradingSelect?.value === 'other'
+    ? (document.getElementById('gradingOrgCustom')?.value || '').trim()
+    : (gradingSelect?.value || '');
+  
+  const subOrgSelect = document.getElementById('submittingOrg');
+  const subOrgValue = subOrgSelect?.value === 'other'
+    ? (document.getElementById('submittingOrgCustom')?.value || '').trim()
+    : (subOrgSelect?.value || '');
+  
+  const subMethodSelect = document.getElementById('submittingMethod');
+  const subMethodValue = subMethodSelect?.value === '其他'
+    ? (document.getElementById('submittingMethodCustom')?.value || '').trim()
+    : (subMethodSelect?.value || '');
+  
   editingCardData = {
     name: cardName,
     series: series,
     no: no,
-    category: document.getElementById('cardCategory')?.value || '',
-    categoryCustom: document.getElementById('cardCategoryCustom')?.value || '',
-    image: currentImageBase64,
+    category: categoryValue,
+    cardType: typeValue,
+    gradingOrg: gradingValue,
+    language: document.getElementById('cardLanguage')?.value || '中文',
+    qty: document.getElementById('cardQty')?.value || '0',
     purchaseQty: document.getElementById('cardPurchaseQty')?.value || '0',
     purchasePrice: document.getElementById('cardPurchasePrice')?.value || '0',
     purchaseCurrency: document.getElementById('cardPurchaseCurrency')?.value || 'CNY',
@@ -3689,20 +4087,24 @@ function openPriceChecker() {
     saleQty: document.getElementById('cardSaleQty')?.value || '0',
     salePrice: document.getElementById('cardSalePrice')?.value || '0',
     saleCurrency: document.getElementById('cardSaleCurrency')?.value || 'CNY',
-    language: document.getElementById('cardLanguage')?.value || '中文',
-    cardType: document.getElementById('cardType')?.value || '裸卡',
-    cardTypeCustom: document.getElementById('cardTypeCustom')?.value || '',
     source: document.getElementById('cardSource')?.value || '',
     sourceLink: document.getElementById('cardSourceLink')?.value || '',
     purchaseTrackingNo: document.getElementById('cardPurchaseTrackingNo')?.value || '',
     saleSource: document.getElementById('cardSaleSource')?.value || '',
     saleLink: document.getElementById('cardSaleLink')?.value || '',
     saleTrackingNo: document.getElementById('cardSaleTrackingNo')?.value || '',
-    qty: document.getElementById('cardQty')?.value || '0',
-    groups: editingCardData?.groups || []
+    isInStock: document.getElementById('isInStock')?.checked || false,
+    isSubmitting: document.getElementById('isSubmitting')?.checked || false,
+    submittingOrg: subOrgValue,
+    submittingMethod: subMethodValue,
+    submittingBatch: document.getElementById('submittingBatch')?.value?.trim() || '',
+    images: [...imgList],
+    purchaseVouchers: [...purVList],
+    saleVouchers: [...saleVList],
+    submittingVouchers: [...subVList],
+    groups: [...(cardGroupsList || [])]
   };
   
-  // 显示查价选项
   const content = `
     <div class="space-y-4">
       <p class="text-sm text-gray-600 dark:text-gray-400">选择查价网站搜索：<strong>${searchQuery}</strong></p>
@@ -3738,18 +4140,14 @@ function openPriceChecker() {
 // 关闭查价弹窗并恢复编辑界面
 function closePriceCheckerAndRestore() {
   closeModal();
-  // 恢复编辑界面
-  if (editingCardIndex !== null && cards[editingCardIndex]) {
-    // 如果是编辑模式，重新打开编辑界面
-    setTimeout(() => {
-      editCard(editingCardIndex);
-    }, 100);
-  } else if (editingCardData) {
-    // 如果是新增模式，使用保存的数据重新打开新增界面
-    setTimeout(() => {
-      restoreAddForm(editingCardData);
-    }, 100);
-  }
+  const isEditMode = editingCardIndex !== null && cards[editingCardIndex];
+  setTimeout(() => {
+    if (isEditMode) {
+      editCard(editingCardIndex, editingCardData);
+    } else {
+      openAddCardModal(editingCardData);
+    }
+  }, 150);
 }
 
 // 恢复新增表单（用于查价后返回）
@@ -4190,7 +4588,7 @@ async function updateCardImagesPreview() {
     
     html += `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onclick="openImagePreview(this.src)">
         <div class="hidden w-full h-full items-center justify-center text-gray-400 text-xs bg-gray-100 dark:bg-gray-700">
           <i class="fa fa-image text-xl"></i>
         </div>
@@ -4276,8 +4674,8 @@ async function updateVoucherPreview(type) {
     const imgSrc = await loadImageFromFile(fileName) || '';
     
     html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="凭证${i + 1}" onerror="this.style.display='none'">
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer" alt="凭证${i + 1}" onerror="this.style.display='none'" onclick="openImagePreview(this.src)">
         <button type="button" onclick="event.stopPropagation(); removeVoucher(${i}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
@@ -4370,7 +4768,7 @@ async function updateEditCardImagesPreview() {
     
     html += `
       <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" alt="卡牌图片${i + 1}" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';" onclick="openImagePreview(this.src)">
         <div class="hidden w-full h-full items-center justify-center text-gray-400 text-xs bg-gray-100 dark:bg-gray-700">
           <i class="fa fa-image text-xl"></i>
         </div>
@@ -4461,8 +4859,8 @@ async function updateEditVoucherPreview(type) {
     }
     
     html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="凭证${i + 1}" onerror="this.style.display='none'">
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer" alt="凭证${i + 1}" onerror="this.style.display='none'" onclick="openImagePreview(this.src)">
         <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${i}, '${type}')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
@@ -4587,8 +4985,8 @@ async function updateSubmittingVoucherPreview() {
     }
     
     html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="送评凭证${i + 1}" onerror="this.style.display='none'">
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer" alt="送评凭证${i + 1}" onerror="this.style.display='none'" onclick="openImagePreview(this.src)">
         <button type="button" onclick="event.stopPropagation(); removeSubmittingVoucher(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
@@ -4658,8 +5056,8 @@ async function updateEditSubmittingVoucherPreview() {
     }
     
     html += `
-      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${imgSrc}')">
-        <img src="${imgSrc}" class="w-full h-full object-cover" alt="送评凭证${i + 1}" onerror="this.style.display='none'">
+      <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+        <img src="${imgSrc}" class="w-full h-full object-cover cursor-pointer" alt="送评凭证${i + 1}" onerror="this.style.display='none'" onclick="openImagePreview(this.src)">
         <button type="button" onclick="event.stopPropagation(); removeEditSubmittingVoucher(${i})" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
           <i class="fa fa-times"></i>
         </button>
@@ -4831,7 +5229,7 @@ async function exportToExcel() {
     const activeCards = cards.filter(c => !c.markedForDelete);
     const deletedCards = cards.filter(c => c.markedForDelete);
     
-    const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片', '购入凭证', '出售凭证', '是否送评', '送评机构', '送评途径', '送评凭证'];
+    const headers = ['名称', '分类', '系列', '编号', '类型', '评级机构', '分组', '语言', '来源', '来源链接', '出售来源', '出售链接', '购入物流', '出售物流', '数量', '购入数量', '出售数量', '购入价', '购入币种', '市场价', '市场币种', '出售价', '出售币种', '是否入库', '图片', '购入凭证', '出售凭证', '是否送评', '送评机构', '送评途径', '送评批次', '送评凭证'];
     
     const activeData = [headers];
     activeCards.forEach(c => {
@@ -4890,6 +5288,7 @@ async function exportToExcel() {
       rowData.push(c.isSubmitting ? '是' : '否');
       rowData.push(c.submittingOrg || '');
       rowData.push(c.submittingMethod || '');
+      rowData.push(c.submittingBatch || '');
       
       if (subvCount > 0) {
         rowData.push(cardUrl);
@@ -4957,6 +5356,7 @@ async function exportToExcel() {
       rowData.push(c.isSubmitting ? '是' : '否');
       rowData.push(c.submittingOrg || '');
       rowData.push(c.submittingMethod || '');
+      rowData.push(c.submittingBatch || '');
       
       if (subvCount > 0) {
         rowData.push(cardUrl);
@@ -5274,6 +5674,17 @@ function render(data = null) {
   let totalQty = 0;
   let totalValue = 0;
   
+  // 计算批次分组信息
+  const batchMap = {};
+  displayData.forEach(card => {
+    if (card.submittingBatch) {
+      if (!batchMap[card.submittingBatch]) {
+        batchMap[card.submittingBatch] = [];
+      }
+      batchMap[card.submittingBatch].push(card.name || '未命名');
+    }
+  });
+  
   displayData.forEach((card, displayIndex) => {
     // 获取在原始cards数组中的真实索引
     const originalIndex = cards.indexOf(card);
@@ -5312,6 +5723,13 @@ function render(data = null) {
       <td class="px-2 py-1.5 text-gray-600 dark:text-gray-400 text-[11px]">${card.no || '-'}</td>
       <td class="px-2 py-1.5">
         <span class="px-1.5 py-0.5 rounded text-[9px] font-medium ${cardTypeClass}">${card.gradingOrg || '无'}</span>
+      </td>
+      <td class="px-2 py-1.5">
+        ${card.submittingBatch ? (() => {
+          const batchCards = batchMap[card.submittingBatch] || [];
+          const namesText = batchCards.join(' / ');
+          return `<span class="px-1.5 py-0.5 rounded text-[9px] font-medium bg-amber-100 text-amber-700 dark:bg-amber-900/40 dark:text-amber-300 cursor-pointer batch-tag" data-tooltip="批次 ${card.submittingBatch} 包含 ${batchCards.length} 张：${namesText}">📦 ${card.submittingBatch} <span class="text-amber-500">(${batchCards.length})</span></span>`;
+        })() : '<span class="text-gray-300 text-[10px]">-</span>'}
       </td>
       <td class="px-2 py-1.5">
         <div class="flex flex-wrap gap-0.5">
@@ -5383,8 +5801,8 @@ function render(data = null) {
 }
 
 // === 编辑卡牌 ===
-function editCard(index) {
-  const card = cards[index];
+function editCard(index, savedData) {
+  const card = savedData || cards[index];
   
   // 如果被标记为待删除，需要二次确认
   if (card.markedForDelete) {
@@ -5507,9 +5925,15 @@ function editCard(index) {
             <option value="官网直送" ${card.submittingMethod === '官网直送' ? 'selected' : ''}>官网直送</option>
             <option value="国内代理" ${card.submittingMethod === '国内代理' ? 'selected' : ''}>国内代理</option>
             <option value="淘宝代购" ${card.submittingMethod === '淘宝代购' ? 'selected' : ''}>淘宝代购</option>
-            <option value="其他" ${card.submittingMethod === '其他' ? 'selected' : ''}>其他</option>
+            <option value="其他" ${card.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(card.submittingMethod) ? 'selected' : ''}>其他</option>
           </select>
-          <input type="text" id="submittingMethodCustom" value="${card.submittingMethod === '其他' ? card.submittingMethodCustom : ''}" class="${card.submittingMethod === '其他' ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他送评途径">
+          <input type="text" id="submittingMethodCustom" value="${card.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(card.submittingMethod) ? card.submittingMethod : ''}" class="${card.submittingMethod && !['官网直送', '国内代理', '淘宝代购', '其他', ''].includes(card.submittingMethod) ? '' : 'hidden'} w-full mt-2 border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 text-sm" placeholder="输入其他送评途径">
+        </div>
+        <!-- 送评批次号 -->
+        <div class="col-span-2">
+          <label class="block text-sm font-medium mb-1">送评批次号 <span class="text-xs text-gray-400">(多张评级卡合并到同一单时填写，用"/"分隔展示)</span></label>
+          <input type="text" id="submittingBatch" value="${card.submittingBatch || ''}" class="w-full border rounded-lg px-3 py-2 dark:bg-gray-700 dark:border-gray-600 focus:ring-2 focus:ring-primary focus:border-transparent text-sm" placeholder="如：PSA-2024-001，多张卡填相同编号即视为同一单">
+          <p class="mt-1 text-xs text-purple-500"><i class="fa fa-info-circle"></i> 相同批次号的卡牌将在列表中用"/"分隔展示，方便合并统计</p>
         </div>
         <!-- 送评凭证 -->
         <div class="col-span-2">
@@ -5556,8 +5980,8 @@ function editCard(index) {
             <label class="block text-sm font-medium mb-1">购入凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="purchaseVoucherPreview">
               ${card.purchaseVouchers && card.purchaseVouchers.length > 0 ? card.purchaseVouchers.map((img, idx) => `
-                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
-                  <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover cursor-pointer" alt="凭证${idx + 1}" onclick="openImagePreview(this.src)">
                   <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, 'purchase')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
                     <i class="fa fa-times"></i>
                   </button>
@@ -5595,8 +6019,8 @@ function editCard(index) {
             <label class="block text-sm font-medium mb-1">出售凭证 <span class="text-xs text-gray-400">(可选)</span></label>
             <div class="flex flex-wrap gap-2" id="saleVoucherPreview">
               ${card.saleVouchers && card.saleVouchers.length > 0 ? card.saleVouchers.map((img, idx) => `
-                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600 cursor-pointer" onclick="openImagePreview('${img}')">
-                  <img src="${img}" class="w-full h-full object-cover" alt="凭证${idx + 1}">
+                <div class="relative w-16 h-16 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
+                  <img src="${img}" class="w-full h-full object-cover cursor-pointer" alt="凭证${idx + 1}" onclick="openImagePreview(this.src)">
                   <button type="button" onclick="event.stopPropagation(); removeEditVoucher(${idx}, 'sale')" class="absolute top-0 right-0 bg-red-500 text-white w-4 h-4 flex items-center justify-center rounded-bl text-xs hover:bg-red-600">
                     <i class="fa fa-times"></i>
                   </button>
@@ -5705,7 +6129,7 @@ function editCard(index) {
           <div id="cardImagesPreview" class="flex flex-wrap gap-2 min-h-[100px] p-2 border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg bg-gray-50 dark:bg-gray-800">
             ${card.images && card.images.length > 0 ? card.images.map((img, idx) => `
               <div class="relative w-20 h-24 rounded-lg overflow-hidden border border-gray-300 dark:border-gray-600">
-                <img src="${img}" class="w-full h-full object-cover" alt="卡牌图片${idx + 1}">
+                <img src="${img}" class="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity" alt="卡牌图片${idx + 1}" onclick="openImagePreview(this.src)">
                 <button type="button" onclick="removeEditCardImage(${idx})" class="absolute top-0 right-0 bg-red-500 text-white w-5 h-5 flex items-center justify-center rounded-bl-lg text-xs hover:bg-red-600">
                   <i class="fa fa-times"></i>
                 </button>
@@ -5825,8 +6249,13 @@ function editCard(index) {
         saleVouchers: editSaleVouchersList,
         // 送评相关字段
         isSubmitting: document.getElementById('isSubmitting')?.checked || false,
-        submittingOrg: document.getElementById('submittingOrg')?.value || '',
-        submittingMethod: document.getElementById('submittingMethod')?.value || '',
+        submittingOrg: document.getElementById('submittingOrg')?.value === 'other'
+          ? (document.getElementById('submittingOrgCustom')?.value || '').trim()
+          : (document.getElementById('submittingOrg')?.value || ''),
+        submittingMethod: document.getElementById('submittingMethod')?.value === '其他'
+          ? (document.getElementById('submittingMethodCustom')?.value || '').trim()
+          : (document.getElementById('submittingMethod')?.value || ''),
+        submittingBatch: document.getElementById('submittingBatch')?.value?.trim() || '',
         submittingVouchers: editSubmittingVouchersList
       };
       save();
@@ -6155,11 +6584,50 @@ function loadSampleData() {
     }
   ];
   
-  cards = sampleCards;
+  sampleCards.forEach(c => c.isSample = true);
+  
+  const existingKeys = new Set(cards.map(c => `${c.name}|${c.series}|${c.no}`));
+  const newCards = sampleCards.filter(c => !existingKeys.has(`${c.name}|${c.series}|${c.no}`));
+  
+  if (newCards.length === 0) {
+    showToast('提示', '所有示例卡牌已存在，无需重复加载');
+    return;
+  }
+  
+  cards = cards.concat(newCards);
   save();
   render();
   updateDeletedCount();
-  showToast('成功', '已加载10张示例卡牌');
+  showToast('成功', `已追加 ${newCards.length} 张示例卡牌（跳过 ${sampleCards.length - newCards.length} 张已存在的）`);
+}
+
+// === 清除所有示例数据 ===
+function clearSampleData() {
+  const sampleCount = cards.filter(c => c.isSample).length;
+  if (sampleCount === 0) {
+    showToast('提示', '没有需要清除的示例数据');
+    return;
+  }
+  if (!confirm(`将清除 ${sampleCount} 张示例卡牌，确定要继续吗？`)) return;
+  
+  cards = cards.filter(c => !c.isSample);
+  save();
+  render();
+  updateDeletedCount();
+  showToast('成功', `已清除 ${sampleCount} 张示例卡牌`);
+}
+
+// === 清空所有数据 ===
+function clearAllData() {
+  if (!confirm('⚠️ 此操作将清空所有卡牌数据，且不可恢复！确定要继续吗？')) return;
+  if (!confirm('再次确认：所有卡牌、设置、分组等数据都将被彻底删除！')) return;
+  
+  cards = [];
+  save();
+  localStorage.removeItem('tcgCards');
+  showToast('成功', '所有数据已清空');
+  render();
+  updateDeletedCount();
 }
 
 // === 立即初始化 ===

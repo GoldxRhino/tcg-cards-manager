@@ -477,12 +477,6 @@
               <button id="deletedCardsBtn" onclick="showDeletedCardsManager()" data-tooltip="点击进入已删除卡牌管理界面，在里面可以操作所有被删除的卡牌，包括查看详情、恢复卡牌或彻底删除。" class="bg-orange-50 dark:bg-orange-900/30 hover:bg-orange-100 dark:hover:bg-orange-900/50 text-orange-600 dark:text-orange-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
                 <i class="fa fa-trash-o text-xs"></i> 已删
               </button>
-              <button onclick="clearSampleData()" data-tooltip="清除所有示例卡牌（标记为示例的数据），不会影响你自己添加的卡牌" class="col-span-2 bg-blue-50 dark:bg-blue-900/30 hover:bg-blue-100 dark:hover:bg-blue-900/50 text-blue-600 dark:text-blue-400 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
-                <i class="fa fa-magic text-xs"></i> 清除示例数据
-              </button>
-              <button onclick="clearAllData()" data-tooltip="⚠️ 清空所有卡牌数据（包括自己添加的），不可恢复！" class="col-span-2 bg-red-100 dark:bg-red-900/40 hover:bg-red-200 dark:hover:bg-red-900/60 text-red-700 dark:text-red-300 px-2 py-1.5 rounded-lg text-[10px] transition-colors flex flex-col items-center gap-0.5">
-                <i class="fa fa-fire text-xs"></i> 清空全部数据
-              </button>
             </div>
           </div>
           
@@ -2535,6 +2529,7 @@ function handleBackupFile(e) {
 // === 显示已删除卡牌管理器 ===
 function showDeletedCardsManager() {
   const deletedCards = cards.filter(card => card.markedForDelete);
+  const sampleCount = cards.filter(c => c.isSample).length;
 
   const content = `
     <div class="space-y-4 max-h-[70vh] overflow-y-auto pr-2">
@@ -2580,7 +2575,29 @@ function showDeletedCardsManager() {
         </div>
       `}
 
-      <div class="pt-4 border-t border-gray-200 dark:border-gray-700">
+      <div class="pt-4 border-t border-gray-200 dark:border-gray-700 space-y-2">
+        <button onclick="clearSampleData()" class="w-full flex items-center gap-3 p-3 bg-blue-50 dark:bg-blue-900/20 hover:bg-blue-100 dark:hover:bg-blue-900/40 rounded-lg transition-colors text-left">
+          <div class="w-8 h-8 rounded-full bg-blue-500/10 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-magic text-blue-500"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-800 dark:text-gray-200">清除示例数据</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">移除所有示例卡牌，不影响自己添加的数据${sampleCount > 0 ? `（当前 ${sampleCount} 张）` : ''}</p>
+          </div>
+        </button>
+        
+        <button onclick="clearAllData()" class="w-full flex items-center gap-3 p-3 bg-red-50 dark:bg-red-900/20 hover:bg-red-100 dark:hover:bg-red-900/40 rounded-lg transition-colors text-left">
+          <div class="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center flex-shrink-0">
+            <i class="fa fa-fire text-red-500"></i>
+          </div>
+          <div class="flex-1">
+            <p class="text-sm font-medium text-gray-800 dark:text-gray-200">清空全部数据</p>
+            <p class="text-xs text-gray-500 dark:text-gray-400">⚠️ 清空所有卡牌（含自己添加的），不可恢复</p>
+          </div>
+        </button>
+      </div>
+
+      <div class="pt-2 border-t border-gray-200 dark:border-gray-700">
         <button onclick="closeModal()" class="w-full bg-gray-200 dark:bg-gray-600 py-2 rounded-lg hover:bg-gray-300 dark:hover:bg-gray-500 transition-colors">
           <i class="fa fa-times mr-1"></i>关闭
         </button>
@@ -6615,6 +6632,7 @@ function clearSampleData() {
   render();
   updateDeletedCount();
   showToast('成功', `已清除 ${sampleCount} 张示例卡牌`);
+  showDeletedCardsManager();
 }
 
 // === 清空所有数据 ===
